@@ -1098,13 +1098,9 @@
           staySeconds = BiometricEngine.parseDurationToSeconds(stayStr);
         }
 
-        // Determine status
+        // Determine status: As requested, any punch / stay (even 1 hour) counts as Present!
         if (!statusVal) {
-          if (staySeconds >= 28800) {
-            statusVal = 'present';
-          } else if (staySeconds >= 14400) {
-            statusVal = 'half_day';
-          } else if (inTimeVal && !outTimeVal) {
+          if (inTimeVal || staySeconds > 0) {
             statusVal = 'present';
           } else {
             statusVal = 'absent';
@@ -1451,24 +1447,14 @@
           const log = state.dailyLogs[dateStr];
 
           if (log) {
-            let stay = null;
             if (log.inTime && log.outTime) {
-              stay = this.calculateStay(log.inTime, log.outTime);
+              const stay = this.calculateStay(log.inTime, log.outTime);
               totalStaySeconds += stay.totalSeconds;
             }
 
-            // In CITS/AEBAS, a stay under 4 hours does not fulfill the session training requirement
-            const isInvalidShortStay = stay && stay.totalHours > 0 && stay.totalHours < 4;
-
-            if (log.status === 'present') {
-              if (isInvalidShortStay) {
-                absentDays += 1;
-              } else {
-                presentDays += 1;
-              }
-            } else if (log.status === 'half_day') {
-              halfDays += 1;
-              leaveDays += 1;
+            // Any day marked present (even if stay is 1 hour) counts as 1 FULL DAY PRESENT in Day metrics
+            if (log.status === 'present' || log.status === 'half_day') {
+              presentDays += 1;
             } else if (log.status === 'leave') {
               leaveDays += 1;
             } else if (log.status === 'absent') {
@@ -1565,8 +1551,7 @@
           workingDays++;
           const log = state.dailyLogs[dateStr];
           if (log) {
-            if (log.status === 'present') daysPresent += 1;
-            else if (log.status === 'half_day') daysPresent += 0.5;
+            if (log.status === 'present' || log.status === 'half_day') daysPresent += 1;
             else if (log.status === 'leave') daysLeaves += 1;
             else if (log.status === 'absent') daysAbsent += 1;
 
