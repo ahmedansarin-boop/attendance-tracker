@@ -520,12 +520,15 @@
         if (docSnap.exists) {
           const cloudData = docSnap.data();
           if (cloudData.settings) state.settings = { ...DEFAULT_SETTINGS, ...cloudData.settings };
-          if (cloudData.dailyLogs) state.dailyLogs = cloudData.dailyLogs;
+          if (cloudData.dailyLogs) state.dailyLogs = cloudData.dailyLogs || {};
           if (Array.isArray(cloudData.holidays)) state.holidays = cloudData.holidays;
-          StorageManager.saveLocalOnly();
-          this.lastSyncTime = new Date();
-          this.updateSyncBadge(false, '🟢 Cloud Synced');
+        } else {
+          // Fresh Google account: start with 0 logs (clean slate)
+          state.dailyLogs = {};
         }
+        StorageManager.saveLocalOnly();
+        this.lastSyncTime = new Date();
+        this.updateSyncBadge(false, '🟢 Cloud Synced');
       } catch (err) {
         console.warn('Cloud fetch note:', err);
       }
@@ -701,15 +704,17 @@
     load() {
       try {
         const key = this.getStorageKey();
-        const raw = localStorage.getItem(key) || (key === `${STORAGE_KEY}_GUEST` ? localStorage.getItem(STORAGE_KEY) : null);
+        const isGuest = !AuthManager || !AuthManager.currentUser || !AuthManager.currentUser.uid;
+        const raw = localStorage.getItem(key) || (isGuest ? localStorage.getItem(STORAGE_KEY) : null);
         if (raw) {
           const parsed = JSON.parse(raw);
           state.settings = { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) };
-          state.dailyLogs = parsed.dailyLogs || generateInitialBiometricLogs();
+          state.dailyLogs = parsed.dailyLogs || (isGuest ? generateInitialBiometricLogs() : {});
           state.holidays = Array.isArray(parsed.holidays) ? parsed.holidays : JSON.parse(JSON.stringify(DEFAULT_HOLIDAYS));
         } else {
           state.settings = { ...DEFAULT_SETTINGS };
-          state.dailyLogs = generateInitialBiometricLogs();
+          // Guest mode gets sample demo logs for instant preview; logged-in Google users get clean empty slate!
+          state.dailyLogs = isGuest ? generateInitialBiometricLogs() : {};
           state.holidays = JSON.parse(JSON.stringify(DEFAULT_HOLIDAYS));
           this.saveLocalOnly();
         }
@@ -1047,8 +1052,8 @@
         let stayStr = null;
         let statusVal = null;
 
-        // Official AEBAS 7-column layout:
-        // Col 0: S.No | Col 1: Date | Col 2: Loc In | Col 3: Loc Out | Col 4: In Time | Col 5: Out Time | Col 6: Stay
+        // Official AEBAS 7 or 8-column layout:
+        // Col 0: S.No | Col 1: Date | Col 2: Loc In | Col 3: Loc Out | Col 4: In Time | Col 5: Out Time | Col 6: Stay | Col 7: Status
         if (cells.length >= 5) {
           const possibleDate1 = this.parseFlexibleDate(cells[1]);
           const possibleDate0 = this.parseFlexibleDate(cells[0]);
@@ -1060,12 +1065,19 @@
             inTimeVal = this.parseFlexibleTime(cells[4]);
             outTimeVal = cells[5] ? this.parseFlexibleTime(cells[5]) : null;
             if (cells[6]) stayStr = cells[6];
+            if (cells[7]) {
+              const sRaw = cells[7].trim().toLowerCase();
+              if (sRaw === 'closed' || sRaw === 'present' || sRaw === 'p') statusVal = 'present';
+              else if (sRaw === 'leave' || sRaw === 'l') statusVal = 'leave';
+              else if (sRaw === 'absent' || sRaw === 'a') statusVal = 'absent';
+            }
           } else if (possibleDate0) {
             dateVal = possibleDate0;
             inTimeVal = this.parseFlexibleTime(cells[1]);
             outTimeVal = cells[2] ? this.parseFlexibleTime(cells[2]) : null;
             if (cells[3]) locIn = cells[3];
             if (cells[4]) locOut = cells[4];
+            if (cells[5]) stayStr = cells[5];
           }
         } else {
           // Less columns: scan cells
@@ -1091,15 +1103,16 @@
         let stayDisplay = '00:00:00';
 
         if (inTimeVal && outTimeVal) {
-          staySeconds = BiometricEngine.computeDuration(inTimeVal, outTimeVal);
-          stayDisplay = BiometricEngine.formatSecondsToHHMMSS(staySeconds);
-        } else if (stayStr && stayStr.match(/\d{1,2}:\d{1,2}/)) {
+          const stay = BiometricEngine.calculateStay(inTimeVal, outTimeVal);
+          staySeconds = stay.totalSeconds;
+          stayDisplay = stay.text;
+        } else if (stayStr) {
           stayDisplay = stayStr;
           staySeconds = BiometricEngine.parseDurationToSeconds(stayStr);
         }
 
-        // Determine status: As requested, any punch / stay (even 1 hour) counts as Present!
-        if (!statusVal) {
+        // Determine status: As requested, any punch / stay (even 1 hour or 'Closed') counts as Present!
+        if (!statusVal || statusVal === 'closed') {
           if (inTimeVal || staySeconds > 0) {
             statusVal = 'present';
           } else {
@@ -1422,6 +1435,30 @@
       };
     },
 
+    computeDuration(inTime, outTime) {
+      const stay = this.calculateStay(inTime, outTime);
+      return stay.totalSeconds;
+    },
+
+    formatSecondsToHHMMSS(totalSeconds) {
+      if (!totalSeconds || totalSeconds < 0) return '00:00:00';
+      const h = Math.floor(totalSeconds / 3600);
+      const m = Math.floor((totalSeconds % 3600) / 60);
+      const s = totalSeconds % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    },
+
+    parseDurationToSeconds(durationStr) {
+      if (!durationStr) return 0;
+      const parts = String(durationStr).trim().split(':').map(Number);
+      if (parts.length === 3) {
+        return (parts[0] || 0) * 3600 + (parts[1] || 0) * 60 + (parts[2] || 0);
+      } else if (parts.length === 2) {
+        return (parts[0] || 0) * 3600 + (parts[1] || 0) * 60;
+      }
+      return 0;
+    },
+
     computeOverallMetrics() {
       const cal = CalendarEngine.computeWorkingDays();
       const start = CalendarEngine.parseDate(state.settings.startDate);
@@ -1461,8 +1498,8 @@
               absentDays += 1;
             }
           } else {
-            presentDays += 1;
-            totalStaySeconds += reqHoursPerDay * 3600;
+            // Unrecorded working day: trainee was not logged
+            absentDays += 1;
           }
         } else {
           offDaysCount++;
@@ -1560,8 +1597,7 @@
               monthStaySeconds += stay.totalSeconds;
             }
           } else {
-            daysPresent += 1;
-            monthStaySeconds += 8.5 * 3600;
+            daysAbsent += 1;
           }
         }
       }
@@ -2300,9 +2336,13 @@
             outTime = log.outTime || '';
             notes = log.notes || '';
           } else {
-            // Default working day
-            inTime = '08:51:30';
-            outTime = '17:35:47';
+            // Unrecorded working day: no punch recorded
+            status = 'absent';
+            locIn = '--';
+            locOut = '--';
+            inTime = '';
+            outTime = '';
+            notes = 'No punch recorded';
           }
 
           const stay = BiometricEngine.calculateStay(inTime, outTime);
