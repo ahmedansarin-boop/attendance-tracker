@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NSTI Mumbai | CITS Daily Biometric Attendance Portal</title>
+  <meta name="description" content="Official Daily Biometric Attendance Portal for NSTI Mumbai CITS Trainees. In/Out time logging, stay duration calculation, monthly register, graphical analytics, and leave tracking.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20%220%22%20%22100%22%20%22100%22><text y=%22.9em%22 font-size=%2290%22>⏱️</text></svg>">
+
+  <!-- Primary Standalone Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Header Bar -->
+  <header class="app-header no-print">
+    <div class="header-inner">
+      <div class="header-top">
+        
+        <!-- Institutional Brand Identity -->
+        <div class="brand-wrapper">
+          <div class="brand-logo" aria-hidden="true">
+            ⏱️
+          </div>
+          <div class="brand-meta">
+            <div class="brand-subline">
+              <span class="brand-subline-item">DGT • MSDE Govt. of India</span>
+              <span class="brand-subline-dot">•</span>
+              <span class="brand-subline-item brand-session-tag">CITS 2026–2027</span>
+              <span class="brand-subline-dot">•</span>
+              <span class="brand-subline-item brand-aebas-tag">AEBAS Biometric</span>
+            </div>
+            <h1 class="brand-title">
+              NSTI Mumbai <span class="brand-title-divider">|</span> <span class="brand-title-sub">Daily Attendance Portal</span>
+            </h1>
+          </div>
+        </div>
+
+        <!-- Header Actions: Clean, Single-Line, Uncluttered -->
+        <div class="header-actions">
+          
+          <!-- Live Date & Clock Pill (Compact) -->
+          <div class="clock-pill-widget" title="Current Academic Date & Live Clock">
+            <span class="clock-live-indicator"></span>
+            <span id="headerLiveDate" class="clock-date">Tue, 03 Nov 2026</span>
+            <span class="clock-divider">|</span>
+            <span id="headerLiveTime" class="clock-time font-mono-num">10:00:00 AM</span>
+          </div>
+
+          <!-- Google Account Sign-In Button (Shown when logged out) -->
+          <button id="btnGoogleSignIn" class="google-sign-in-btn" title="Sign in with your Google Account">
+            <svg class="google-icon-svg" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
+            <span class="google-btn-text">Sign In with Google</span>
+          </button>
+
+          <!-- User Profile Chip (Shown when logged in) -->
+          <div id="userProfileChip" class="user-profile-chip hidden" title="Account Settings & Cloud Sync - Click to manage">
+            <img id="userAvatarImg" class="user-avatar-img" src="" alt="Avatar" style="display: none;">
+            <div id="userAvatarPlaceholder" class="user-avatar-placeholder">U</div>
+            <div class="user-chip-details">
+              <span id="userChipName" class="user-chip-name">Trainee</span>
+              <span id="userChipStatusText" class="user-chip-status">Cloud Sync</span>
+            </div>
+            <span id="userChipBadge" class="cloud-sync-beacon" title="Synced with Cloud"></span>
+          </div>
+
+          <!-- Header Tools Button Group -->
+          <div class="header-tools-group">
+            <!-- Official Report Button -->
+            <button id="btnPrintReport" class="btn btn-subtle btn-header-tool" title="Open Official Attendance Dossier">
+              <span>📄</span>
+              <span class="btn-tool-label">Dossier</span>
+            </button>
+
+            <!-- Export CSV Button -->
+            <button id="btnExportCSV" class="btn btn-subtle btn-header-tool" title="Export Current Table as CSV Spreadsheet">
+              <span>📊</span>
+              <span class="btn-tool-label">CSV</span>
+            </button>
+
+            <!-- Quick Backup Button -->
+            <button id="btnQuickExport" class="btn btn-subtle btn-header-tool" title="Download JSON Attendance Backup">
+              <span>💾</span>
+              <span class="btn-tool-label">Backup</span>
+            </button>
+
+            <!-- Cloud Sync Status Icon Pill -->
+            <button id="btnCloudSyncStatus" class="btn btn-subtle btn-icon-only" title="Cloud Sync Status & Settings">
+              <span id="cloudSyncDot" class="cloud-sync-beacon" style="background-color: #94a3b8;"></span>
+              <span id="cloudSyncText" class="hidden">Local Storage</span>
+            </button>
+          </div>
+
+          <!-- Dark Mode Toggle Button -->
+          <button id="themeToggleBtn" class="btn btn-subtle btn-icon-only" aria-label="Toggle Dark Mode" title="Toggle Dark/Light Mode">
+            <span id="themeToggleIcon">🌙</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs (Top-Level) -->
+      <nav class="tabs-nav" aria-label="Main Navigation">
+        <button data-tab="portal" class="nav-tab-btn tab-btn active">
+          <span>📋</span>
+          <span>Attendance Portal</span>
+        </button>
+
+        <button data-tab="calendar" class="nav-tab-btn tab-btn">
+          <span>📅</span>
+          <span>Working Days Engine</span>
+        </button>
+
+        <button data-tab="holidays" class="nav-tab-btn tab-btn">
+          <span>🏖️</span>
+          <span>Holidays & Leaves</span>
+          <span id="badgeHolidayCount" class="tab-badge">28</span>
+        </button>
+
+        <button data-tab="simulator" class="nav-tab-btn tab-btn">
+          <span>🔮</span>
+          <span>Leave Planner & Simulator</span>
+        </button>
+
+        <button data-tab="settings" class="nav-tab-btn tab-btn">
+          <span>⚙️</span>
+          <span>Data & Settings</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="main-content">
+
+    <!-- Executive KPI Overview Grid -->
+    <section aria-label="Executive Overview" class="kpi-grid no-print">
+      
+      <!-- Metric 1: Overall Attendance Compliance -->
+      <div class="card">
+        <div class="card-header-row">
+          <span class="card-eyebrow">Cumulative Attendance</span>
+          <span id="kpiStatusBadge" class="badge-pill badge-emerald">
+            <span class="status-beacon beacon-safe"></span>
+            <span id="kpiStatusText">COMPLIANT</span>
+          </span>
+        </div>
+
+        <div class="card-stat-row">
+          <span id="kpiAggregatePct" class="card-stat-number font-mono-num">87.7%</span>
+          <span class="card-stat-label">Target: <strong id="kpiTargetLabel" class="font-mono-num">80%</strong></span>
+        </div>
+
+        <div>
+          <div class="progress-track">
+            <div id="kpiAggregateProgressBar" class="progress-fill safe" style="width: 87.7%;"></div>
+          </div>
+          <div class="card-footer-metrics">
+            <span>Present: <strong id="kpiPresentDays">50.0</strong>d</span>
+            <span>Elapsed: <strong id="kpiElapsedWorkingDays">57</strong>d</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metric 2: Overall Hours & Stay Analytics -->
+      <div class="card">
+        <div class="card-header-row">
+          <span class="card-eyebrow">Stay Hours Logged</span>
+          <span id="kpiStayBadge" class="badge-pill badge-primary">FULL STAY</span>
+        </div>
+
+        <div class="card-stat-row">
+          <span id="kpiTotalHours" class="card-stat-number font-mono-num" style="color: var(--primary);">442h 18m</span>
+          <span class="card-stat-label">Total Stay</span>
+        </div>
+
+        <div>
+          <div class="card-footer-metrics">
+            <span>Avg Daily: <strong id="kpiAvgDailyStay">08:44:17</strong></span>
+            <span>Target: <strong>08:00:00</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metric 3: Days & Leaves Breakdown -->
+      <div class="card">
+        <div class="card-header-row">
+          <span class="card-eyebrow">Days & Leaves</span>
+          <div id="kpiBufferIcon" class="badge-pill badge-emerald">
+            <span>🛡️</span>
+          </div>
+        </div>
+
+        <div class="card-stat-row">
+          <span id="kpiBufferCount" class="card-stat-number font-mono-num">+5</span>
+          <span id="kpiBufferUnit" class="card-stat-label">Days Safe Buffer</span>
+        </div>
+
+        <div>
+          <div class="card-footer-metrics">
+            <span>Leaves: <strong id="kpiLeavesCount" style="color: var(--primary);">2</strong></span>
+            <span>Absent: <strong id="kpiAbsentCount" style="color: var(--rose);">5</strong></span>
+            <span>Half Day: <strong id="kpiHalfDayCount" style="color: var(--amber);">2</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metric 4: Session Timeline Tracker -->
+      <div class="card">
+        <div class="card-header-row">
+          <span class="card-eyebrow">Session Timeline</span>
+          <span class="card-stat-label font-mono-num" style="font-size: 0.7rem;">17 Aug '26 – 31 May '27</span>
+        </div>
+
+        <div class="card-stat-row">
+          <span id="kpiSemesterProgressPct" class="card-stat-number font-mono-num" style="color: var(--primary);">28%</span>
+          <span class="card-stat-label">Working Days Done</span>
+        </div>
+
+        <div>
+          <div class="progress-track">
+            <div id="kpiSemesterProgressBar" class="progress-fill primary" style="width: 28%;"></div>
+          </div>
+          <div class="card-footer-metrics">
+            <span>Done: <strong id="kpiWorkingDaysDone">57</strong> / <span id="kpiNetWorkingDays">201</span></span>
+            <span>Remaining: <strong id="kpiWorkingDaysRemaining">144</strong>d</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 1: ATTENDANCE PORTAL (Graphical | Register | Details) -->
+    <section id="tab-portal" class="tab-content" style="display: flex; flex-direction: column; gap: 1.25rem;">
+      
+      <!-- Live Today Quick Biometric Punch Card -->
+      <div class="punch-card no-print">
+        <div class="punch-info-col">
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <span class="badge-pill badge-primary">Today's Biometric Log</span>
+            <span id="todayDateLabel" style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">03-11-2026 (Tuesday)</span>
+            <span id="todayStatusHighlight" class="badge-pill badge-emerald">PRESENT</span>
+          </div>
+
+          <div class="punch-time-display">
+            <div class="punch-time-pill">
+              <span class="punch-time-label">Location (In)</span>
+              <span id="displayLocationIn" style="font-weight: 700; font-size: 0.85rem;">NSTI Mumbai</span>
+            </div>
+            <div class="punch-time-pill">
+              <span class="punch-time-label">In Time</span>
+              <span id="displayInTime" class="punch-time-value">08:51:30</span>
+            </div>
+            <div class="punch-time-pill">
+              <span class="punch-time-label">Out Time</span>
+              <span id="displayOutTime" class="punch-time-value">17:35:47</span>
+            </div>
+            <div class="punch-time-pill">
+              <span class="punch-time-label">Stay (in Hrs)</span>
+              <span id="displayStay" class="punch-time-value" style="color: var(--emerald);">08:44:17</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="punch-actions-col">
+          <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">
+            One-Click Attendance Punch
+          </span>
+
+          <div class="punch-btn-grid">
+            <button id="btnQuickPresent" class="punch-btn active-present">
+              <span>✔️</span>
+              <span>Present</span>
+            </button>
+            <button id="btnQuickHalfDay" class="punch-btn">
+              <span>🌓</span>
+              <span>Half Day</span>
+            </button>
+            <button id="btnQuickLeave" class="punch-btn">
+              <span>🏖️</span>
+              <span>On Leave</span>
+            </button>
+            <button id="btnQuickAbsent" class="punch-btn">
+              <span>❌</span>
+              <span>Absent</span>
+            </button>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem;">
+            <button id="btnPunchInNow" class="btn btn-primary" style="flex: 1; font-size: 0.8rem;">
+              <span>⏱️</span>
+              <span>Punch In Now</span>
+            </button>
+            <button id="btnPunchOutNow" class="btn btn-subtle" style="flex: 1; font-size: 0.8rem;">
+              <span>🚪</span>
+              <span>Punch Out Now</span>
+            </button>
+            <button id="btnEditTodayLog" class="btn btn-subtle btn-icon-only" title="Edit Today's Full Record">
+              <span>✏️</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PORTAL CONTAINER WITH SUB-TABS (EXACT MATCH TO USER SCREENSHOT) -->
+      <div class="portal-card">
+        
+        <!-- Portal Sub-Tabs Bar: Graphical | Register | Details -->
+        <div class="portal-tabs-container">
+          <button class="portal-subtab-btn" data-subtab="graphical">
+            Graphical
+          </button>
+          <button class="portal-subtab-btn" data-subtab="register">
+            Register
+          </button>
+          <button class="portal-subtab-btn active" data-subtab="details">
+            Details
+          </button>
+        </div>
+
+        <!-- Filter & Actions Toolbar -->
+        <div class="toolbar-bar no-print" style="margin: 0 1rem; border-radius: var(--radius-md);">
+          
+          <div class="toolbar-group">
+            <!-- Month Selector -->
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <button id="btnPrevMonth" class="btn btn-subtle btn-icon-only" title="Previous Month">◀</button>
+              <select id="selectMonthDropdown" class="form-select font-mono-num" style="font-weight: 700; width: auto; font-size: 0.85rem;">
+                <option value="all">Entire Session (Aug '26 – May '27)</option>
+                <option value="2026-08">August 2026</option>
+                <option value="2026-09">September 2026</option>
+                <option value="2026-10">October 2026</option>
+                <option value="2026-11" selected>November 2026</option>
+                <option value="2026-12">December 2026</option>
+                <option value="2027-01">January 2027</option>
+                <option value="2027-02">February 2027</option>
+                <option value="2027-03">March 2027</option>
+                <option value="2027-04">April 2027</option>
+                <option value="2027-05">May 2027</option>
+              </select>
+              <button id="btnNextMonth" class="btn btn-subtle btn-icon-only" title="Next Month">▶</button>
+            </div>
+
+            <!-- Status Filters -->
+            <div class="segmented-control">
+              <button data-status-filter="all" class="status-filter-btn segmented-btn active">All</button>
+              <button data-status-filter="present" class="status-filter-btn segmented-btn">Present</button>
+              <button data-status-filter="half_day" class="status-filter-btn segmented-btn">Half Day</button>
+              <button data-status-filter="leave" class="status-filter-btn segmented-btn">Leaves</button>
+              <button data-status-filter="absent" class="status-filter-btn segmented-btn">Absent</button>
+              <button data-status-filter="short_stay" class="status-filter-btn segmented-btn">Short Stay (&lt;8h)</button>
+            </div>
+          </div>
+
+          <div class="toolbar-group">
+            <!-- Search Bar -->
+            <div class="search-input-wrapper">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input type="text" id="detailsSearchInput" placeholder="Filter by date..." class="search-input">
+            </div>
+
+            <button id="btnAddNewDayLog" class="btn btn-primary" title="Add or Edit a Day Record">
+              <span>➕</span>
+              <span>Add / Edit Day</span>
+            </button>
+
+            <!-- Bulk Excel / CSV / Paste Upload Button -->
+            <button id="btnOpenBulkImportModal" class="btn btn-subtle" title="Bulk Import & Upsert from Excel, CSV, or Copied Text" style="font-weight: 700; border-color: var(--primary); color: var(--primary-text);">
+              <span>📥</span>
+              <span>Bulk Excel / CSV</span>
+            </button>
+
+            <button id="btnMarkMonthPresent" class="btn btn-success" title="Mark all working weekdays this month as Present">
+              <span>✔️</span>
+              <span>Mark Month Present</span>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- SUB-TAB CONTENT 1: DETAILS (EXACT MATCH TO USER SCREENSHOT) -->
+        <div id="subtab-details-content" class="portal-subtab-pane">
+          <div class="portal-table-wrapper">
+            <table class="portal-table">
+              <thead>
+                <tr>
+                  <th style="width: 60px;">S. No</th>
+                  <th>Date</th>
+                  <th>Location (In)</th>
+                  <th>Location (Out)</th>
+                  <th>In Time</th>
+                  <th>Out Time</th>
+                  <th>Stay (in Hrs)</th>
+                  <th>Status</th>
+                  <th class="text-right no-print">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="portalTableBody" class="font-mono-num">
+                <!-- Rows injected dynamically by JavaScript matching screenshot -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SUB-TAB CONTENT 2: REGISTER (MUSTER ROLL MATRIX VIEW) -->
+        <div id="subtab-register-content" class="portal-subtab-pane hidden" style="padding: 1rem;">
+          <div style="margin-bottom: 0.75rem; font-size: 0.8rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;">
+            <span>Official Biometric Register Code Guide: <strong>P</strong>=Present, <strong>HD</strong>=Half Day, <strong>L</strong>=Leave, <strong>A</strong>=Absent, <strong>WO</strong>=Weekly Off, <strong>H</strong>=Holiday</span>
+            <span id="registerMonthLabel" class="font-mono-num" style="font-weight: 700; color: var(--primary);">November 2026</span>
+          </div>
+
+          <div class="register-table-wrapper">
+            <table class="register-table font-mono-num">
+              <thead>
+                <tr id="registerTableHeader">
+                  <!-- Injected via JavaScript: Month, Days 1..31, Total Working Days, Presents, Leaves, Absents, Stay Hours, % -->
+                </tr>
+              </thead>
+              <tbody id="registerTableBody">
+                <!-- Injected via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SUB-TAB CONTENT 3: GRAPHICAL ANALYTICS -->
+        <div id="subtab-graphical-content" class="portal-subtab-pane hidden">
+          <div class="graphical-grid">
+            
+            <!-- Daily Stay Hours Chart -->
+            <div class="chart-card" style="grid-column: 1 / -1;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h4 style="font-size: 0.95rem; font-weight: 800; display: flex; align-items: center; gap: 0.4rem;">
+                  <span>📊</span>
+                  <span>Daily Stay Hours Tracking (vs. 08:00:00 Benchmark)</span>
+                </h4>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Benchmark: Full Day $\ge$ 8.0 hrs</span>
+              </div>
+              <div id="dailyStayBarsContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 380px; overflow-y: auto; padding-right: 0.5rem;">
+                <!-- Dynamically generated bars for days -->
+              </div>
+            </div>
+
+            <!-- Attendance Distribution Breakdown -->
+            <div class="chart-card">
+              <h4 style="font-size: 0.9rem; font-weight: 800;">Attendance Status Distribution</h4>
+              <div id="statusDistributionBars" style="display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.5rem;">
+                <!-- Generated by JS -->
+              </div>
+            </div>
+
+            <!-- Stay Hours KPI Metrics -->
+            <div class="chart-card">
+              <h4 style="font-size: 0.9rem; font-weight: 800;">Working Hours Surplus / Deficit</h4>
+              <div style="display: flex; flex-direction: column; gap: 0.6rem; font-size: 0.8rem; margin-top: 0.5rem;">
+                <div style="display: flex; justify-content: space-between; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border-color);">
+                  <span style="color: var(--text-muted);">Total Elapsed Hours Required:</span>
+                  <strong id="statRequiredHours" class="font-mono-num">456h 00m</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border-color);">
+                  <span style="color: var(--text-muted);">Total Stay Hours Completed:</span>
+                  <strong id="statCompletedHours" class="font-mono-num" style="color: var(--primary);">442h 18m</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 0.4rem 0.6rem; background-color: var(--emerald-light); border-radius: var(--radius-sm);">
+                  <span style="color: var(--emerald-text); font-weight: 700;">Average Stay Per Working Day:</span>
+                  <strong id="statAverageDailyStay" class="font-mono-num" style="color: var(--emerald-text); font-weight: 800;">08:44:17</strong>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- TAB 2: WORKING DAYS ENGINE -->
+    <section id="tab-calendar" class="tab-content hidden" style="display: flex; flex-direction: column; gap: 1.5rem;">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.75rem;">
+          <div>
+            <h2 style="font-size: 1.15rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem;">
+              <span>📅</span>
+              <span>Session Working Days & Calendar Engine</span>
+            </h2>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+              Defines institute working days between 17 August 2026 and 31 May 2027 by stripping weekends and holidays.
+            </p>
+          </div>
+
+          <button id="btnResetCalendarDefaults" class="btn btn-subtle">
+            <span>🔄</span>
+            <span>Reset to NSTI 2026-27 Defaults</span>
+          </button>
+        </div>
+
+        <div class="form-grid" style="margin-top: 1.25rem;">
+          <div class="form-group">
+            <label for="inputStartDate" class="form-label">Semester Start Date</label>
+            <input type="date" id="inputStartDate" value="2026-08-17" class="form-input font-mono-num">
+            <span class="form-help">Default: 17 August 2026</span>
+          </div>
+
+          <div class="form-group">
+            <label for="inputEndDate" class="form-label">Semester End Date</label>
+            <input type="date" id="inputEndDate" value="2027-05-31" class="form-input font-mono-num">
+            <span class="form-help">Default: 31 May 2027</span>
+          </div>
+
+          <div class="form-group">
+            <label for="inputRefDate" class="form-label">Reference Date ("Today")</label>
+            <input type="date" id="inputRefDate" class="form-input font-mono-num">
+            <span class="form-help">Calculates elapsed vs. remaining</span>
+          </div>
+
+          <div class="form-group">
+            <label for="selectSaturdayRule" class="form-label">Saturday Weekend Policy</label>
+            <select id="selectSaturdayRule" class="form-select">
+              <option value="2nd_4th" selected>2nd & 4th Saturdays Off (DGT / Govt Rule)</option>
+              <option value="all">All Saturdays Off (5-Day Week)</option>
+              <option value="none">No Saturdays Off (6-Day Week)</option>
+            </select>
+            <span class="form-help">Standard Central Institute Schedule</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border-color); display: flex; gap: 1.5rem; flex-wrap: wrap;">
+          <label class="custom-checkbox-label">
+            <input type="checkbox" id="checkSundayOff" checked class="custom-checkbox">
+            <span>Sundays Always Off</span>
+          </label>
+
+          <label class="custom-checkbox-label">
+            <input type="checkbox" id="checkExcludeHolidays" checked class="custom-checkbox">
+            <span>Exclude Verified Official Holidays from Working Days</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Working Days Breakdown & Monthly Distribution -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+        
+        <div class="card" style="gap: 1rem;">
+          <h3 style="font-size: 0.95rem; font-weight: 800; display: flex; align-items: center; gap: 0.4rem;">
+            <span>🧮</span>
+            <span>Engine Breakdown</span>
+          </h3>
+
+          <div style="display: flex; flex-direction: column; gap: 0.6rem; font-size: 0.8rem;">
+            <div style="display: flex; justify-content: space-between; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border-color);">
+              <span style="color: var(--text-muted);">Total Calendar Days:</span>
+              <span id="statCalTotalDays" class="font-mono-num" style="font-weight: 700;">288</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border-color);">
+              <span style="color: var(--text-muted);">Sundays in Range:</span>
+              <span id="statCalSundays" class="font-mono-num" style="font-weight: 700;">41</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border-color);">
+              <span style="color: var(--text-muted);">Saturdays Off:</span>
+              <span id="statCalSaturdays" class="font-mono-num" style="font-weight: 700;">20</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border-color);">
+              <span style="color: var(--text-muted);">Official Holidays (Non-Weekend):</span>
+              <span id="statCalHolidays" class="font-mono-num" style="font-weight: 700;">26</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 0.5rem 0.65rem; background-color: var(--primary-light); border-radius: var(--radius-sm);">
+              <span style="font-weight: 700; color: var(--primary-text);">Net Working Days (Total):</span>
+              <span id="statCalNetWorking" class="font-mono-num" style="font-weight: 800; font-size: 1rem; color: var(--primary);">201</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border-color);">
+              <span style="color: var(--text-muted);">Net Working Days Elapsed:</span>
+              <span id="statCalNetElapsed" class="font-mono-num" style="font-weight: 700; color: var(--emerald);">57</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-muted);">Net Working Days Remaining:</span>
+              <span id="statCalNetRemaining" class="font-mono-num" style="font-weight: 700; color: var(--amber);">144</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="gap: 1rem;">
+          <h3 style="font-size: 0.95rem; font-weight: 800;">Monthly Working Days Distribution (Aug 2026 – May 2027)</h3>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th class="text-right">Cal. Days</th>
+                  <th class="text-right">Weekends Off</th>
+                  <th class="text-right">Holidays</th>
+                  <th class="text-right" style="color: var(--primary);">Working Days</th>
+                  <th class="text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody id="monthlyDistributionBody" class="font-mono-num">
+                <!-- Injected via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 3: HOLIDAYS & LEAVES -->
+    <section id="tab-holidays" class="tab-content hidden" style="display: flex; flex-direction: column; gap: 1.25rem;">
+      <div class="toolbar-bar">
+        <div>
+          <h2 style="font-size: 1.1rem; font-weight: 800; display: flex; align-items: center; gap: 0.4rem;">
+            <span>🏖️</span>
+            <span>NSTI Mumbai Official & Maharashtra Gazetted Leaves</span>
+          </h2>
+          <p style="font-size: 0.75rem; color: var(--text-muted);">
+            Toggling switches updates net working days and simulation projections in real time.
+          </p>
+        </div>
+
+        <div class="toolbar-group">
+          <button id="btnOpenAddHolidayModal" class="btn btn-primary">
+            <span>➕</span>
+            <span>Add Custom Leave</span>
+          </button>
+          <button id="btnToggleAllHolidays" class="btn btn-subtle">
+            Toggle All
+          </button>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <div class="segmented-control">
+          <button data-holiday-filter="all" class="holiday-filter-btn segmented-btn active">
+            All Leaves (<span id="countFilterAll">28</span>)
+          </button>
+          <button data-holiday-filter="upcoming" class="holiday-filter-btn segmented-btn">
+            Upcoming (<span id="countFilterUpcoming">18</span>)
+          </button>
+          <button data-holiday-filter="past" class="holiday-filter-btn segmented-btn">
+            Past (<span id="countFilterPast">10</span>)
+          </button>
+        </div>
+
+        <div style="font-size: 0.8rem; color: var(--text-muted);">
+          Active Leaves: <strong id="activeHolidaysCountBadge" class="font-mono-num" style="color: var(--primary);">26</strong>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="text-center" style="width: 50px;">Active</th>
+              <th>Date & Day</th>
+              <th>Occasion / Leave Name</th>
+              <th>Category</th>
+              <th>Weekend Status</th>
+              <th class="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="holidaysTableBody">
+            <!-- Injected by app.js -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 4: LEAVE PLANNER & SIMULATOR -->
+    <section id="tab-simulator" class="tab-content hidden" style="display: flex; flex-direction: column; gap: 1.5rem;">
+      <div class="card" style="gap: 1.5rem;">
+        <div>
+          <h2 style="font-size: 1.25rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem;">
+            <span>🔮</span>
+            <span>Leave Planner & Target Compliance Simulator</span>
+          </h2>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Simulate planned leaves, test "what-if" scenarios, and ensure your attendance stays safely above the DGT 80% mandatory threshold.
+          </p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+          
+          <div class="card" style="background-color: var(--bg-subtle); gap: 1rem;">
+            <span class="card-eyebrow">Simulation Parameters</span>
+
+            <div class="form-group">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label for="simTargetSlider" class="form-label">DGT Target Compliance %</label>
+                <span id="simTargetValueLabel" class="font-mono-num" style="font-weight: 800; color: var(--primary);">80%</span>
+              </div>
+              <input type="range" id="simTargetSlider" min="50" max="95" value="80" step="1" style="width: 100%; accent-color: var(--primary); cursor: pointer;">
+              <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-light); font-family: var(--font-mono);">
+                <span>50%</span>
+                <span>75% (Medical)</span>
+                <span>80% (DGT Standard)</span>
+                <span>95%</span>
+              </div>
+            </div>
+
+            <div style="padding-top: 0.75rem; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 0.75rem;">
+              <div class="form-group">
+                <label for="simFutureAttendInput" class="form-label">If I attend next <strong>N</strong> working days:</label>
+                <input type="number" id="simFutureAttendInput" min="0" max="200" value="10" class="form-input font-mono-num">
+              </div>
+
+              <div class="form-group">
+                <label for="simFutureMissInput" class="form-label">And take leave / absent for next <strong>M</strong> working days:</label>
+                <input type="number" id="simFutureMissInput" min="0" max="100" value="2" class="form-input font-mono-num">
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="gap: 1.25rem;">
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+              <div class="card" style="padding: 1rem; background-color: var(--bg-subtle);">
+                <span class="card-eyebrow">Current Standing</span>
+                <div style="display: flex; align-items: baseline; gap: 0.5rem; margin-top: 0.25rem;">
+                  <span id="simCurrentPct" class="font-mono-num" style="font-size: 1.85rem; font-weight: 800;">87.7%</span>
+                  <span id="simCurrentStatusBadge" class="badge-pill badge-emerald">OK</span>
+                </div>
+                <span style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono);">
+                  Present <strong id="simCurrentAttended">50</strong> of <strong id="simCurrentConducted">57</strong> working days
+                </span>
+              </div>
+
+              <div class="card" style="padding: 1rem; background-color: var(--primary-light); border-color: rgba(2, 132, 199, 0.3);">
+                <span class="card-eyebrow" style="color: var(--primary);">Simulated Outcome</span>
+                <div style="display: flex; align-items: baseline; gap: 0.5rem; margin-top: 0.25rem;">
+                  <span id="simResultPct" class="font-mono-num" style="font-size: 1.85rem; font-weight: 800; color: var(--primary);">87.0%</span>
+                  <span id="simDeltaBadge" class="badge-pill badge-rose">-0.7%</span>
+                </div>
+                <span style="font-size: 0.75rem; color: var(--primary-text); font-family: var(--font-mono);">
+                  Projected <strong id="simResultAttended">60</strong> of <strong id="simResultConducted">69</strong> working days
+                </span>
+              </div>
+            </div>
+
+            <div id="simRecommendationBox" class="card" style="padding: 1rem; border-left: 4px solid var(--emerald); gap: 0.5rem;">
+              <h4 id="simRecTitle" style="font-size: 0.95rem; font-weight: 800; display: flex; align-items: center; gap: 0.4rem;">
+                <span>✔️</span>
+                <span>Leave Request Compliant</span>
+              </h4>
+              <p id="simRecDetail" style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.45;">
+                Under this scenario, your attendance comfortably satisfies the institutional criterion.
+              </p>
+            </div>
+
+            <div class="card" style="padding: 1rem; background-color: var(--bg-subtle); gap: 0.75rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 700; font-size: 0.8rem;">End-of-Session Potential (Till 31 May 2027)</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono);">
+                  Remaining Days: <strong id="simRemainingWorkingDays">144</strong>
+                </span>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div style="padding: 0.65rem; background-color: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                  <span style="font-size: 0.7rem; color: var(--text-muted); display: block;">Maximum Possible Attendance</span>
+                  <span id="simMaxPossiblePct" class="font-mono-num" style="font-size: 1.15rem; font-weight: 800; color: var(--emerald);">96.5%</span>
+                </div>
+                <div style="padding: 0.65rem; background-color: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                  <span style="font-size: 0.7rem; color: var(--text-muted); display: block;">Max Allowable Leaves</span>
+                  <span id="simMaxSemesterMissCount" class="font-mono-num" style="font-size: 1.15rem; font-weight: 800; color: var(--primary);">33 Days</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: DATA MANAGEMENT & SETTINGS -->
+    <section id="tab-settings" class="tab-content hidden" style="display: flex; flex-direction: column; gap: 1.5rem;">
+      <div class="card" style="gap: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+          <div>
+            <h2 style="font-size: 1.1rem; font-weight: 800; display: flex; align-items: center; gap: 0.4rem;">
+              <span>👤</span>
+              <span>Trainee Profile & Biometric Policy</span>
+            </h2>
+            <p style="font-size: 0.75rem; color: var(--text-muted);">
+              These credentials appear on the official attendance dossier and JSON backup files.
+            </p>
+          </div>
+          <button id="btnSaveProfile" class="btn btn-primary">
+            Save Profile
+          </button>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="inputTraineeName" class="form-label">Trainee Full Name</label>
+            <input type="text" id="inputTraineeName" placeholder="e.g. Nadeem Ansari" class="form-input">
+          </div>
+
+          <div class="form-group">
+            <label for="inputRollNumber" class="form-label">Roll / Registration Number</label>
+            <input type="text" id="inputRollNumber" placeholder="e.g. CITS26-MUM-1048" class="form-input font-mono-num">
+          </div>
+
+          <div class="form-group">
+            <label for="inputTradeName" class="form-label">CITS Trade / Specialization</label>
+            <input type="text" id="inputTradeName" placeholder="e.g. Computer Software Applications (CSA)" class="form-input">
+          </div>
+
+          <div class="form-group">
+            <label for="inputDefaultTarget" class="form-label">Target Compliance (%)</label>
+            <input type="number" id="inputDefaultTarget" min="50" max="100" value="80" class="form-input font-mono-num">
+          </div>
+
+          <div class="form-group">
+            <label for="inputDefaultInTime" class="form-label">Standard In Time (HH:MM)</label>
+            <input type="time" id="inputDefaultInTime" value="09:00" class="form-input font-mono-num">
+          </div>
+
+          <div class="form-group">
+            <label for="inputDefaultOutTime" class="form-label">Standard Out Time (HH:MM)</label>
+            <input type="time" id="inputDefaultOutTime" value="17:30" class="form-input font-mono-num">
+          </div>
+
+          <div class="form-group">
+            <label for="inputRequiredHours" class="form-label">Full Day Min. Hours (Benchmark)</label>
+            <input type="number" id="inputRequiredHours" min="4" max="12" step="0.5" value="8" class="form-input font-mono-num">
+          </div>
+        </div>
+      </div>
+
+      <!-- Google Account & Cloud Sync Card in Settings -->
+      <div class="card" style="gap: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.75rem;">
+          <div>
+            <h2 style="font-size: 1.1rem; font-weight: 800; display: flex; align-items: center; gap: 0.4rem;">
+              <span>☁️</span>
+              <span>Google Account & Multi-Device Cloud Sync</span>
+            </h2>
+            <p style="font-size: 0.75rem; color: var(--text-muted);">
+              Sign in with your Google account to automatically synchronize all attendance records between your PC, laptop, and mobile. 100% Free forever.
+            </p>
+          </div>
+          <button id="btnOpenCloudModalFromSettings" class="btn btn-primary">
+            <span>⚙️</span>
+            <span>Manage Account & Cloud</span>
+          </button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; font-size: 0.8rem;">
+          <div style="padding: 0.85rem; background-color: var(--bg-subtle); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <span style="color: var(--text-muted); display: block; font-size: 0.7rem; text-transform: uppercase; font-weight: 700; margin-bottom: 0.25rem;">Current Account</span>
+            <div id="settingsAccountNameText" style="font-weight: 800; font-size: 0.95rem; color: var(--text-main);">Guest User (Local Storage)</div>
+            <div id="settingsAccountEmailText" style="font-size: 0.75rem; color: var(--text-muted);">Not signed in to Google</div>
+          </div>
+          <div style="padding: 0.85rem; background-color: var(--bg-subtle); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <span style="color: var(--text-muted); display: block; font-size: 0.7rem; text-transform: uppercase; font-weight: 700; margin-bottom: 0.25rem;">Cloud Storage Provider</span>
+            <div style="font-weight: 800; font-size: 0.95rem; color: var(--primary-text);">Google Firestore (Spark Tier)</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">1 GB Free Storage • 50k reads/day</div>
+          </div>
+          <div style="padding: 0.85rem; background-color: var(--bg-subtle); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <span style="color: var(--text-muted); display: block; font-size: 0.7rem; text-transform: uppercase; font-weight: 700; margin-bottom: 0.25rem;">Running Cost & Hosting</span>
+            <div style="font-weight: 800; font-size: 0.95rem; color: #059669;">100% Free Forever</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">Zero server fees • GitHub Pages ready</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Backup, Restore, and Reset Center -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+        
+        <div class="card" style="gap: 1rem;">
+          <h3 style="font-size: 1rem; font-weight: 800; display: flex; align-items: center; gap: 0.4rem;">
+            <span>💾</span>
+            <span>Data Portability & JSON Backup</span>
+          </h3>
+          <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.45;">
+            All daily logs and settings are saved locally in browser <code>localStorage</code>. Download a JSON backup to move between devices or protect against cache clearing.
+          </p>
+
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem;">
+            <button id="btnExportFullJSON" class="btn btn-primary" style="flex: 1;">
+              <span>⬇️</span>
+              <span>Download Backup JSON</span>
+            </button>
+
+            <label class="btn btn-subtle" style="flex: 1; cursor: pointer;">
+              <span>⬆️</span>
+              <span>Import Backup JSON</span>
+              <input type="file" id="inputImportJSONFile" accept=".json,application/json" class="hidden">
+            </label>
+          </div>
+
+          <button type="button" id="btnOpenBulkImportModalFromSettings" class="btn btn-subtle" style="width: 100%; border: 1.5px dashed var(--primary); color: var(--primary-text); font-weight: 700; margin-top: 0.25rem;">
+            <span>📥</span>
+            <span>Open Bulk Excel / CSV / Clipboard Import Wizard</span>
+          </button>
+        </div>
+
+        <div class="card" style="gap: 1rem;">
+          <h3 style="font-size: 1rem; font-weight: 800; color: var(--rose); display: flex; align-items: center; gap: 0.4rem;">
+            <span>⚠️</span>
+            <span>Template Restoration & Reset</span>
+          </h3>
+          <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.45;">
+            Restore official NSTI Mumbai CITS templates (17 Aug 2026 – 31 May 2027 session, 80% DGT target) or wipe all records.
+          </p>
+
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem;">
+            <button id="btnRestoreTemplate" class="btn btn-subtle" style="flex: 1;">
+              <span>🔄</span>
+              <span>Restore NSTI Template</span>
+            </button>
+
+            <button id="btnFactoryReset" class="btn btn-danger" style="flex: 1;">
+              <span>🗑️</span>
+              <span>Wipe All Data</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="app-footer no-print">
+    <div class="footer-inner">
+      <div>
+        <strong>National Skill Training Institute (NSTI), Mumbai</strong> • CITS Daily Attendance Engine
+      </div>
+      <div>
+        Session: <strong>17 Aug 2026 – 31 May 2027</strong> • Zero-Dependency Local Architecture
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- Day Attendance Log / Edit Modal (Full Details) -->
+  <div id="dayLogModal" class="modal-backdrop hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="dayModalTitle" class="modal-title">
+          <span>📝</span>
+          <span>Log / Modify Day Attendance</span>
+        </h3>
+        <button id="btnCloseDayModal" class="btn btn-subtle btn-icon-only">✕</button>
+      </div>
+
+      <form id="dayLogForm" style="display: flex; flex-direction: column; gap: 1rem;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.85rem; background-color: var(--bg-subtle); border-radius: var(--radius-md);">
+          <span style="font-size: 0.8rem; font-weight: 700;">Record Date (DD-MM-YYYY):</span>
+          <input type="date" id="modalDayDate" required class="form-input font-mono-num" style="width: auto; padding: 0.35rem 0.65rem;">
+        </div>
+
+        <div class="form-group">
+          <label for="modalDayStatus" class="form-label">Attendance Status *</label>
+          <select id="modalDayStatus" class="form-select" required>
+            <option value="present">🟢 Present (Full Day)</option>
+            <option value="half_day">🟡 Half Day</option>
+            <option value="leave">🔵 Approved Leave (CL / Medical)</option>
+            <option value="absent">🔴 Absent</option>
+            <option value="weekend">⚪ Weekend Off (Saturday/Sunday)</option>
+            <option value="holiday">🏖️ Official Holiday</option>
+          </select>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label for="modalLocationIn" class="form-label">Location (In)</label>
+            <input type="text" id="modalLocationIn" value="NSTI Mumbai" class="form-input">
+          </div>
+          <div class="form-group">
+            <label for="modalLocationOut" class="form-label">Location (Out)</label>
+            <input type="text" id="modalLocationOut" value="NSTI Mumbai" class="form-input">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label for="modalDayInTime" class="form-label">Punch In Time (HH:MM:SS)</label>
+            <input type="text" id="modalDayInTime" placeholder="08:51:30" class="form-input font-mono-num">
+          </div>
+          <div class="form-group">
+            <label for="modalDayOutTime" class="form-label">Punch Out Time (HH:MM:SS)</label>
+            <input type="text" id="modalDayOutTime" placeholder="17:35:47" class="form-input font-mono-num">
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; padding: 0.5rem 0.75rem; background-color: var(--primary-light); border-radius: var(--radius-sm); border: 1px solid rgba(2, 132, 199, 0.25);">
+          <span style="color: var(--primary-text); font-weight: 700;">Calculated Stay Duration:</span>
+          <strong id="modalCalculatedDuration" class="font-mono-num" style="color: var(--primary); font-size: 1rem; font-weight: 800;">08:44:17</strong>
+        </div>
+
+        <div class="form-group">
+          <label for="modalDayNotes" class="form-label">Remarks / Notes</label>
+          <input type="text" id="modalDayNotes" placeholder="e.g. Trainee biometric punch / Lesson plan submission" class="form-input">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="btnCancelDayModal" class="btn btn-subtle">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Attendance Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Holiday Add Modal -->
+  <div id="holidayModal" class="modal-backdrop hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <span>🏖️</span>
+          <span>Add Custom Leave / Holiday</span>
+        </h3>
+        <button id="btnCloseHolidayModal" class="btn btn-subtle btn-icon-only">✕</button>
+      </div>
+
+      <form id="holidayForm" style="display: flex; flex-direction: column; gap: 1rem;">
+        <div class="form-group">
+          <label for="modalHolidayName" class="form-label">Occasion / Reason *</label>
+          <input type="text" id="modalHolidayName" required placeholder="e.g. NSTI Sports Fest / Medical Leave" class="form-input">
+        </div>
+
+        <div class="form-group">
+          <label for="modalHolidayDate" class="form-label">Holiday Date *</label>
+          <input type="date" id="modalHolidayDate" required class="form-input font-mono-num">
+          <span class="form-help">Must fall within 17 Aug 2026 to 31 May 2027</span>
+        </div>
+
+        <div class="form-group">
+          <label for="modalHolidayCategory" class="form-label">Category</label>
+          <select id="modalHolidayCategory" class="form-select">
+            <option value="Institutional Leave">NSTI Institutional / Fest Leave</option>
+            <option value="Personal / Medical">Personal / Trainee Medical Leave</option>
+            <option value="Government Gazetted">Govt. Gazetted Holiday</option>
+            <option value="Restricted Holiday">Restricted Holiday</option>
+            <option value="Exam / Prep Leave">Exam / Preparation Break</option>
+          </select>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="btnCancelHolidayModal" class="btn btn-subtle">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Leave</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Official Print / PDF Dossier Modal -->
+  <div id="printModal" class="modal-backdrop hidden">
+    <div class="modal-dialog" style="max-width: 850px; background-color: #ffffff; color: #0f172a;">
+      <div class="modal-header no-print">
+        <h3 class="modal-title" style="color: #0f172a;">
+          <span>📄</span>
+          <span>Formal Attendance Dossier Preview</span>
+        </h3>
+        <div style="display: flex; gap: 0.5rem;">
+          <button onclick="window.print()" class="btn btn-primary">
+            <span>🖨️</span>
+            <span>Print / Save as PDF</span>
+          </button>
+          <button id="btnClosePrintModal" class="btn btn-subtle btn-icon-only">✕</button>
+        </div>
+      </div>
+
+      <div id="printableReportArea" style="display: flex; flex-direction: column; gap: 1.25rem; font-family: var(--font-sans);">
+        <div style="text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 0.75rem;">
+          <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #475569;">
+            Government of India • Ministry of Skill Development and Entrepreneurship
+          </div>
+          <h2 style="font-size: 1.35rem; font-weight: 900; margin: 0.2rem 0; color: #0f172a;">
+            NATIONAL SKILL TRAINING INSTITUTE (NSTI), MUMBAI
+          </h2>
+          <div style="font-size: 0.85rem; font-weight: 600; color: #334155;">
+            Craft Instructor Training Scheme (CITS) • Session 2026–2027
+          </div>
+          <div style="display: inline-block; margin-top: 0.35rem; padding: 0.2rem 0.65rem; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">
+            Trainee Biometric Attendance Dossier & Details
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0.75rem; font-size: 0.8rem;">
+          <div>
+            <div>Trainee Name: <strong id="printReportTraineeName">Nadeem Ansari</strong></div>
+            <div>Registration / Roll No: <strong id="printReportRollNumber" class="font-mono-num">CITS26-MUM-1048</strong></div>
+            <div>Trade / Branch: <strong id="printReportTradeName">Computer Software Applications (CSA)</strong></div>
+          </div>
+          <div>
+            <div>Session Span: <strong>17 August 2026 – 31 May 2027</strong></div>
+            <div>Generated On: <strong id="printReportGeneratedDate">--</strong></div>
+            <div>Minimum DGT Mandatory Threshold: <strong>80.0%</strong></div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; text-align: center; font-size: 0.75rem;">
+          <div style="padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 6px; background-color: #f8fafc;">
+            <span style="color: #64748b; display: block;">Working Days Elapsed</span>
+            <span id="printReportDaysElapsed" class="font-mono-num" style="font-size: 1.1rem; font-weight: 800;">57</span>
+          </div>
+          <div style="padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 6px; background-color: #f8fafc;">
+            <span style="color: #64748b; display: block;">Days Present</span>
+            <span id="printReportDaysPresent" class="font-mono-num" style="font-size: 1.1rem; font-weight: 800; color: #059669;">50.0</span>
+          </div>
+          <div style="padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 6px; background-color: #f8fafc;">
+            <span style="color: #64748b; display: block;">Approved Leaves</span>
+            <span id="printReportDaysLeaves" class="font-mono-num" style="font-size: 1.1rem; font-weight: 800; color: #0284c7;">2</span>
+          </div>
+          <div style="padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 6px; background-color: #f8fafc;">
+            <span style="color: #64748b; display: block;">Cumulative %</span>
+            <span id="printReportAggregatePct" class="font-mono-num" style="font-size: 1.1rem; font-weight: 800; color: #059669;">87.7%</span>
+          </div>
+        </div>
+
+        <div style="border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem;">
+            <thead style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1; text-transform: uppercase;">
+              <tr>
+                <th style="padding: 0.5rem; text-align: left;">Month</th>
+                <th style="padding: 0.5rem; text-align: right;">Net Working Days</th>
+                <th style="padding: 0.5rem; text-align: right;">Days Present</th>
+                <th style="padding: 0.5rem; text-align: right;">Days Absent</th>
+                <th style="padding: 0.5rem; text-align: right;">Leaves</th>
+                <th style="padding: 0.5rem; text-align: right;">Total Stay Hours</th>
+                <th style="padding: 0.5rem; text-align: right;">Monthly %</th>
+                <th style="padding: 0.5rem; text-align: center;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="printReportMonthRows" class="font-mono-num">
+              <!-- Dynamically populated -->
+            </tbody>
+            <tfoot style="background-color: #f1f5f9; font-weight: 800; border-top: 2px solid #cbd5e1;">
+              <tr>
+                <td style="padding: 0.5rem; text-transform: uppercase;">Grand Total</td>
+                <td id="printReportTotalWorkingDays" style="padding: 0.5rem; text-align: right;" class="font-mono-num">57</td>
+                <td id="printReportTotalPresent" style="padding: 0.5rem; text-align: right;" class="font-mono-num">50.0</td>
+                <td id="printReportTotalAbsent" style="padding: 0.5rem; text-align: right;" class="font-mono-num">5</td>
+                <td id="printReportTotalLeaves" style="padding: 0.5rem; text-align: right;" class="font-mono-num">2</td>
+                <td id="printReportTotalStayHours" style="padding: 0.5rem; text-align: right;" class="font-mono-num">442h 18m</td>
+                <td id="printReportAggregatePctFooter" style="padding: 0.5rem; text-align: right; font-size: 0.85rem;" class="font-mono-num">87.7%</td>
+                <td id="printReportAggregateStatus" style="padding: 0.5rem; text-align: center; color: #059669;">COMPLIANT</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; padding-top: 2rem; font-size: 0.75rem; color: #475569;">
+          <div style="text-align: center; width: 180px;">
+            <div style="border-top: 1px solid #475569; padding-top: 0.25rem; font-weight: 700;">Signature of Trainee</div>
+            <div style="font-size: 0.65rem;">Date: _______________</div>
+          </div>
+          <div style="text-align: center; width: 180px;">
+            <div style="border-top: 1px solid #475569; padding-top: 0.25rem; font-weight: 700;">Training Officer / Mentor</div>
+            <div style="font-size: 0.65rem;">NSTI Mumbai</div>
+          </div>
+          <div style="text-align: center; width: 180px;">
+            <div style="border-top: 1px solid #475569; padding-top: 0.25rem; font-weight: 700;">Principal / Joint Director</div>
+            <div style="font-size: 0.65rem;">Official Seal</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bulk Attendance Import & Smart Upsert Modal (Excel / CSV / Paste) -->
+  <div id="bulkImportModal" class="modal-backdrop hidden">
+    <div class="modal-dialog" style="max-width: 720px;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="display: flex; align-items: center; gap: 0.5rem;">
+          <span>📥</span>
+          <span>Bulk Attendance Import & Smart Upsert</span>
+        </h3>
+        <button id="btnCloseBulkImportModal" class="btn btn-subtle btn-icon-only" aria-label="Close modal">✕</button>
+      </div>
+
+      <div class="modal-body" style="gap: 1.25rem;">
+        
+        <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.45;">
+          Upload an <strong>Excel file (.xlsx, .xls)</strong>, a <strong>CSV file</strong>, or <strong>paste table rows</strong> copied directly from your AEBAS portal.
+          The engine smartly normalizes dates (<code>DD-MM-YYYY</code>, <code>DD/MM/YYYY</code>, <code>YYYY-MM-DD</code>) and <strong>replaces / updates existing dates without duplicates</strong>.
+        </p>
+
+        <!-- Mode Toggle Tabs (File Upload vs. Paste Text) -->
+        <div style="display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+          <button type="button" id="tabBtnBulkFile" class="btn btn-primary" style="font-size: 0.8rem; padding: 0.35rem 0.75rem;">
+            <span>📁</span>
+            <span>Upload File (Excel / CSV)</span>
+          </button>
+          <button type="button" id="tabBtnBulkPaste" class="btn btn-subtle" style="font-size: 0.8rem; padding: 0.35rem 0.75rem;">
+            <span>📋</span>
+            <span>Paste Table Text</span>
+          </button>
+        </div>
+
+        <!-- Section 1: File Upload Pane -->
+        <div id="bulkFileUploadPane" style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <div id="bulkDropzone" style="border: 2px dashed var(--border-color); border-radius: var(--radius-md); padding: 1.75rem 1rem; text-align: center; background-color: var(--bg-subtle); cursor: pointer; transition: all 0.2s ease;">
+            <div style="font-size: 2.2rem; margin-bottom: 0.25rem;">📊</div>
+            <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 0.25rem;">Drag & drop your Excel or CSV file here</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.75rem;">Supports .xlsx, .xls, .csv, and tab-separated text</div>
+            <button type="button" id="btnBrowseBulkFile" class="btn btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.85rem; margin: 0 auto;">
+              Browse Computer File
+            </button>
+            <input type="file" id="inputBulkExcelFile" accept=".xlsx,.xls,.csv,text/csv,text/plain" class="hidden">
+          </div>
+          <div id="bulkSelectedFileName" style="font-size: 0.75rem; font-weight: 700; color: var(--primary-text); display: none;"></div>
+        </div>
+
+        <!-- Section 2: Paste Raw Text Pane -->
+        <div id="bulkPastePane" class="hidden" style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <div class="form-group">
+            <label for="inputBulkPasteText" class="form-label" style="font-size: 0.75rem;">
+              Paste rows copied directly from AEBAS portal table or Excel:
+            </label>
+            <textarea id="inputBulkPasteText" rows="6" placeholder="Example:
+1	02-11-2026	NSTI Mumbai	NSTI Mumbai	02-11-2026 08:51:30	02-11-2026 17:35:47	08:44:17
+2	03-11-2026	NSTI Mumbai	NSTI Mumbai	03-11-2026 08:48:12	03-11-2026 17:32:45	08:44:33" class="form-input font-mono-num" style="font-size: 0.72rem; width: 100%; resize: vertical;"></textarea>
+          </div>
+          <button type="button" id="btnParsePastedText" class="btn btn-primary" style="font-size: 0.8rem; width: 100%;">
+            <span>⚡</span>
+            <span>Parse Copied Text</span>
+          </button>
+        </div>
+
+        <!-- Detection & Upsert Statistics Card -->
+        <div id="bulkImportStatsCard" class="card hidden" style="background-color: var(--bg-subtle); padding: 0.85rem; border: 1px solid var(--border-color); gap: 0.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="font-size: 0.8rem; font-weight: 800;">
+              <span>Detected Records: </span>
+              <span id="bulkStatTotalCount" class="badge-pill badge-primary">0 Days</span>
+            </div>
+            <div style="display: flex; gap: 0.4rem; font-size: 0.75rem;">
+              <span id="bulkStatUpdateCount" class="badge-pill badge-amber">0 Will Replace/Update</span>
+              <span id="bulkStatNewCount" class="badge-pill badge-emerald">0 New Dates</span>
+            </div>
+          </div>
+
+          <div style="font-size: 0.75rem; color: #059669; display: flex; align-items: center; gap: 0.35rem;">
+            <span>🛡️</span>
+            <span><strong>Smart Deduplication Active:</strong> Dates that already exist will be cleanly updated with these punch times. Zero duplicates will be created.</span>
+          </div>
+
+          <!-- Preview Table of parsed entries -->
+          <div style="max-height: 180px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); margin-top: 0.35rem; background: var(--bg-surface);">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.72rem;">
+              <thead style="background: var(--bg-subtle); position: sticky; top: 0; border-bottom: 1px solid var(--border-color);">
+                <tr>
+                  <th style="padding: 0.35rem 0.5rem; text-align: left;">Date</th>
+                  <th style="padding: 0.35rem 0.5rem; text-align: left;">In Time</th>
+                  <th style="padding: 0.35rem 0.5rem; text-align: left;">Out Time</th>
+                  <th style="padding: 0.35rem 0.5rem; text-align: left;">Stay</th>
+                  <th style="padding: 0.35rem 0.5rem; text-align: left;">Status</th>
+                  <th style="padding: 0.35rem 0.5rem; text-align: center;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="bulkImportPreviewBody" class="font-mono-num">
+                <!-- Dynamically generated rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <button type="button" id="btnCancelBulkImportModal" class="btn btn-subtle">Cancel</button>
+        <button type="button" id="btnExecuteBulkImport" class="btn btn-primary hidden" style="font-weight: 700;">
+          <span>🚀</span>
+          <span id="btnExecuteBulkImportText">Confirm & Upsert Records</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Google Account & Cloud Sync Modal -->
+  <div id="authModal" class="modal-backdrop hidden">
+    <div class="modal-dialog" style="max-width: 540px;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="display: flex; align-items: center; gap: 0.5rem;">
+          <span>☁️</span>
+          <span>Google Account & Cloud Synchronization</span>
+        </h3>
+        <button id="btnCloseAuthModal" class="btn btn-subtle btn-icon-only" aria-label="Close modal">✕</button>
+      </div>
+
+      <div class="modal-body" style="gap: 1.25rem;">
+        
+        <!-- Logged In State Card -->
+        <div id="authCardLoggedIn" class="card hidden" style="background-color: var(--bg-subtle); padding: 1rem; border: 1px solid var(--border-color); gap: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 0.85rem;">
+            <img id="modalUserAvatar" class="user-avatar-img" style="width: 52px; height: 52px; display: none;" src="" alt="User photo">
+            <div id="modalUserPlaceholder" class="user-avatar-placeholder" style="width: 52px; height: 52px; font-size: 1.35rem;">U</div>
+            <div style="flex: 1; overflow: hidden;">
+              <div id="modalUserName" style="font-weight: 800; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">User Name</div>
+              <div id="modalUserEmail" style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">user@gmail.com</div>
+              <div style="display: flex; align-items: center; gap: 0.35rem; margin-top: 0.25rem; flex-wrap: wrap;">
+                <span class="badge-pill badge-emerald" style="font-size: 0.65rem;">Authenticated</span>
+                <span id="modalCloudSyncStatusText" class="badge-pill badge-primary" style="font-size: 0.65rem;">☁️ Firestore Synced</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="font-size: 0.75rem; color: var(--text-muted); border-top: 1px dashed var(--border-color); padding-top: 0.5rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.35rem;">
+            <span>UID: <code id="modalUserUid" class="font-mono-num" style="font-size: 0.7rem;">--</code></span>
+            <span>Last Sync: <strong id="modalLastSyncTime" class="font-mono-num">Just now</strong></span>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+            <button id="btnManualCloudSync" class="btn btn-primary" style="flex: 1;">
+              <span>☁️</span>
+              <span>Sync Cloud Now</span>
+            </button>
+            <button id="btnSignOut" class="btn btn-subtle" style="color: var(--rose);">
+              <span>🚪</span>
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Logged Out State Card -->
+        <div id="authCardLoggedOut" class="card" style="background-color: var(--bg-subtle); padding: 1.25rem; border: 1px solid var(--border-color); text-align: center; gap: 0.85rem;">
+          <div style="font-size: 2.2rem;">🔐</div>
+          <div>
+            <h4 style="font-size: 1.05rem; font-weight: 800; margin-bottom: 0.25rem;">Sign In with your Google Account</h4>
+            <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.45;">
+              Sync all your daily attendance records, punch times, and stay hours across your laptop, desktop, and mobile phone. 100% Free forever.
+            </p>
+          </div>
+
+          <!-- Quick 1-Click Demo vs Real Google Auth Options -->
+          <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
+            <!-- Real Google OAuth Button -->
+            <button id="btnModalGoogleSignIn" class="google-sign-in-btn" style="justify-content: center; padding: 0.65rem 1rem; font-size: 0.9rem; font-weight: 700; width: 100%;">
+              <svg class="google-icon-svg" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+              </svg>
+              <span>Continue with Google Account</span>
+            </button>
+
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin: 0.2rem 0;">
+              <span style="flex: 1; height: 1px; background-color: var(--border-color);"></span>
+              <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-light); text-transform: uppercase;">or instant test</span>
+              <span style="flex: 1; height: 1px; background-color: var(--border-color);"></span>
+            </div>
+
+            <!-- Instant Demo Button -->
+            <button id="btnDemoLogin" class="btn btn-subtle" style="font-size: 0.82rem; padding: 0.55rem; width: 100%; border: 1px solid var(--border-color);">
+              <span>👤</span>
+              <span>Test with Demo Account (Instant Offline Mode)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 100% Free Firebase Cloud Setup Box -->
+        <div class="card" style="background-color: var(--bg-surface); border: 1px solid var(--border-color); padding: 1rem; border-radius: var(--radius-md); gap: 0.75rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h4 style="font-size: 0.85rem; font-weight: 800; color: var(--primary-text); display: flex; align-items: center; gap: 0.35rem;">
+              <span>☁️</span>
+              <span>Connect Free Firebase Cloud Database</span>
+            </h4>
+            <span class="badge-pill badge-emerald" style="font-size: 0.65rem;">100% Free Forever</span>
+          </div>
+
+          <p style="font-size: 0.74rem; color: var(--text-muted); line-height: 1.45;">
+            To save your personal data to your private Google Cloud, paste your free Firebase config code below (from <a href="https://console.firebase.google.com" target="_blank" style="color: var(--primary); text-decoration: underline;">console.firebase.google.com</a>):
+          </p>
+
+          <!-- 1-Click Code Paste Textarea -->
+          <div class="form-group">
+            <label for="inputFirebaseConfigRaw" class="form-label" style="font-size: 0.7rem;">Paste Entire <code>firebaseConfig</code> Snippet (1-Click Auto-Detect):</label>
+            <textarea id="inputFirebaseConfigRaw" rows="3" placeholder="const firebaseConfig = { apiKey: &quot;AIzaSy...&quot;, authDomain: &quot;...&quot;, projectId: &quot;...&quot; };" class="form-input font-mono-num" style="font-size: 0.72rem; width: 100%; resize: vertical;"></textarea>
+          </div>
+
+          <button type="button" id="btnAutoConnectFirebase" class="btn btn-primary" style="font-size: 0.8rem; padding: 0.45rem 0.85rem;">
+            <span>⚡</span>
+            <span>Auto-Detect & Save Configuration</span>
+          </button>
+
+          <!-- Advanced Manual Inputs -->
+          <details style="margin-top: 0.35rem; font-size: 0.75rem;">
+            <summary style="cursor: pointer; color: var(--text-muted); font-weight: 600;">Manual Credentials Form ▾</summary>
+            <div style="margin-top: 0.65rem; display: flex; flex-direction: column; gap: 0.5rem;">
+              <div class="form-group">
+                <label for="inputFirebaseApiKey" class="form-label" style="font-size: 0.7rem;">Firebase API Key</label>
+                <input type="password" id="inputFirebaseApiKey" placeholder="AIzaSy..." class="form-input font-mono-num" style="font-size: 0.75rem; padding: 0.35rem 0.5rem;">
+              </div>
+
+              <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                <div class="form-group">
+                  <label for="inputFirebaseAuthDomain" class="form-label" style="font-size: 0.7rem;">Auth Domain</label>
+                  <input type="text" id="inputFirebaseAuthDomain" placeholder="your-app.firebaseapp.com" class="form-input font-mono-num" style="font-size: 0.75rem; padding: 0.35rem 0.5rem;">
+                </div>
+                <div class="form-group">
+                  <label for="inputFirebaseProjectId" class="form-label" style="font-size: 0.7rem;">Project ID</label>
+                  <input type="text" id="inputFirebaseProjectId" placeholder="nsti-attendance" class="form-input font-mono-num" style="font-size: 0.75rem; padding: 0.35rem 0.5rem;">
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem;">
+                <button id="btnSaveFirebaseConfig" class="btn btn-subtle" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;">
+                  Save Manual Fields
+                </button>
+                <button id="btnResetFirebaseConfig" class="btn btn-subtle" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;">
+                  Reset
+                </button>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background-color: var(--emerald-light); border: 1px solid var(--emerald-border); border-radius: var(--radius-sm); font-size: 0.75rem; color: var(--emerald-text);">
+          <span>🔒</span>
+          <span><strong>Data Isolation:</strong> Each trainee's logs are isolated by their unique Google UID. Nobody else can view or edit your records.</span>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="btnCancelAuthModal" class="btn btn-subtle">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- SheetJS / XLSX Parser (For Reading Excel .xlsx and .xls files in browser) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <!-- Firebase SDKs (Compat v10: Zero-build, pure browser, 100% Free Forever) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
