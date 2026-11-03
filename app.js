@@ -194,12 +194,13 @@
 
   // --- Google Authentication & 100% Free Firebase Firestore Engine ---
   const DEFAULT_FIREBASE_CONFIG = {
-    apiKey: "AIzaSyAttendanceTrackerDemoFreeTierKey2026",
-    authDomain: "nsti-attendance-cits.firebaseapp.com",
-    projectId: "nsti-attendance-cits",
-    storageBucket: "nsti-attendance-cits.appspot.com",
-    messagingSenderId: "987654321098",
-    appId: "1:987654321098:web:4f8e9a2b1c3d4e5f6a7b8c"
+    apiKey: "AIzaSyBWoPJYPvBZzU84k-3OjiU5ACk6JczebI0",
+    authDomain: "nsti-attendance.firebaseapp.com",
+    projectId: "nsti-attendance",
+    storageBucket: "nsti-attendance.firebasestorage.app",
+    messagingSenderId: "557509012296",
+    appId: "1:557509012296:web:ee5ae187f0ffdb2eeaa17d",
+    measurementId: "G-M9YRRS3S0J"
   };
 
   const AuthManager = {
@@ -237,14 +238,8 @@
     },
 
     isCustomConfigured() {
-      const stored = localStorage.getItem('NSTI_FIREBASE_CONFIG');
-      if (!stored) return false;
-      try {
-        const cfg = JSON.parse(stored);
-        return Boolean(cfg && cfg.apiKey && !cfg.apiKey.includes('Demo') && cfg.apiKey.startsWith('AIza') && cfg.projectId);
-      } catch (e) {
-        return false;
-      }
+      const cfg = this.getFirebaseConfig();
+      return Boolean(cfg && cfg.apiKey && !cfg.apiKey.includes('Demo') && cfg.apiKey.startsWith('AIza') && cfg.projectId);
     },
 
     initFirebase() {
