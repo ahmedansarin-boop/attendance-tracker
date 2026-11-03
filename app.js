@@ -1438,6 +1438,9 @@
       let leaveDays = 0;
       let totalStaySeconds = 0;
       let elapsedWorkingCount = 0;
+      let offDaysCount = 0;
+
+      const reqHoursPerDay = state.settings.requiredHours || 8;
 
       while (cur <= ref) {
         const dateStr = CalendarEngine.formatDate(cur);
@@ -1448,34 +1451,50 @@
           const log = state.dailyLogs[dateStr];
 
           if (log) {
+            let stay = null;
+            if (log.inTime && log.outTime) {
+              stay = this.calculateStay(log.inTime, log.outTime);
+              totalStaySeconds += stay.totalSeconds;
+            }
+
+            // In CITS/AEBAS, a stay under 4 hours does not fulfill the session training requirement
+            const isInvalidShortStay = stay && stay.totalHours > 0 && stay.totalHours < 4;
+
             if (log.status === 'present') {
-              presentDays += 1;
+              if (isInvalidShortStay) {
+                absentDays += 1;
+              } else {
+                presentDays += 1;
+              }
             } else if (log.status === 'half_day') {
               halfDays += 1;
-              presentDays += 0.5;
+              leaveDays += 1;
             } else if (log.status === 'leave') {
               leaveDays += 1;
             } else if (log.status === 'absent') {
               absentDays += 1;
             }
-
-            if (log.inTime && log.outTime) {
-              const stay = this.calculateStay(log.inTime, log.outTime);
-              totalStaySeconds += stay.totalSeconds;
-            }
           } else {
             presentDays += 1;
-            totalStaySeconds += 8.5 * 3600;
+            totalStaySeconds += reqHoursPerDay * 3600;
           }
+        } else {
+          offDaysCount++;
         }
         cur.setDate(cur.getDate() + 1);
       }
 
+      const totalLeaves = elapsedWorkingCount - presentDays;
       const targetPercent = state.settings.defaultTarget || 80;
       const targetRatio = targetPercent / 100;
       const percentage = elapsedWorkingCount === 0 ? 100.0 : ((presentDays / elapsedWorkingCount) * 100);
 
-      // Safe Leave Buffer
+      // Hour-Wise Stay Metrics
+      const expectedHours = elapsedWorkingCount * reqHoursPerDay;
+      const expectedStaySeconds = expectedHours * 3600;
+      const hourPercentage = expectedStaySeconds === 0 ? 100.0 : ((totalStaySeconds / expectedStaySeconds) * 100);
+
+      // Safe Leave Buffer (Days)
       let buffer = 0;
       if (targetRatio > 0) {
         buffer = Math.floor((presentDays / targetRatio) - elapsedWorkingCount);
@@ -1509,6 +1528,8 @@
         halfDays,
         absentDays,
         leaveDays,
+        totalLeaves,
+        offDaysCount,
         elapsedWorkingCount,
         percentage: Number(percentage.toFixed(1)),
         targetPercent,
@@ -1518,6 +1539,9 @@
         isCompliant: percentage >= targetPercent,
         totalStaySeconds,
         totalHoursText,
+        expectedHours,
+        hourPercentage: Number(hourPercentage.toFixed(1)),
+        isHourCompliant: hourPercentage >= targetPercent,
         avgStayText
       };
     },
@@ -2081,8 +2105,12 @@
       const stats = BiometricEngine.computeOverallMetrics();
       const cal = CalendarEngine.computeWorkingDays();
 
+      // Card 1: Total Days Present & Day Percentage
+      const kpiPresentDaysMain = document.getElementById('kpiPresentDaysMain');
+      if (kpiPresentDaysMain) kpiPresentDaysMain.textContent = stats.presentDays;
       document.getElementById('kpiAggregatePct').textContent = `${stats.percentage.toFixed(1)}%`;
-      document.getElementById('kpiTargetLabel').textContent = `${stats.targetPercent}%`;
+      const targetLabel = document.getElementById('kpiTargetLabel');
+      if (targetLabel) targetLabel.textContent = `${stats.targetPercent}%`;
       document.getElementById('kpiPresentDays').textContent = stats.presentDays;
       document.getElementById('kpiElapsedWorkingDays').textContent = stats.elapsedWorkingCount;
 
@@ -2106,14 +2134,43 @@
         }
       }
 
-      // Card 2 Hours Logged
+      // Card 2: Hour-Wise Stay & Biometric Hours Percentage
       document.getElementById('kpiTotalHours').textContent = stats.totalHoursText;
+      const kpiHourPct = document.getElementById('kpiHourPct');
+      if (kpiHourPct) kpiHourPct.textContent = `${stats.hourPercentage.toFixed(1)}%`;
+      const kpiExpectedHours = document.getElementById('kpiExpectedHours');
+      if (kpiExpectedHours) kpiExpectedHours.textContent = `${stats.expectedHours}h`;
+      const kpiHourBar = document.getElementById('kpiHourProgressBar');
+      if (kpiHourBar) {
+        kpiHourBar.style.width = `${Math.min(100, stats.hourPercentage)}%`;
+        kpiHourBar.className = `progress-fill ${stats.hourPercentage >= stats.targetPercent ? 'safe' : 'critical'}`;
+      }
+      const kpiStayBadge = document.getElementById('kpiStayBadge');
+      if (kpiStayBadge) {
+        if (stats.hourPercentage >= 100) {
+          kpiStayBadge.className = 'badge-pill badge-emerald';
+          kpiStayBadge.textContent = 'FULL STAY';
+        } else if (stats.hourPercentage >= stats.targetPercent) {
+          kpiStayBadge.className = 'badge-pill badge-primary';
+          kpiStayBadge.textContent = `${stats.hourPercentage.toFixed(0)}% HOURS COMPLIANT`;
+        } else {
+          kpiStayBadge.className = 'badge-pill badge-rose';
+          kpiStayBadge.textContent = 'SHORTFALL HOURS';
+        }
+      }
       document.getElementById('kpiAvgDailyStay').textContent = stats.avgStayText;
 
-      // Card 3 Days & Leaves
-      document.getElementById('kpiLeavesCount').textContent = stats.leaveDays;
-      document.getElementById('kpiAbsentCount').textContent = stats.absentDays;
-      document.getElementById('kpiHalfDayCount').textContent = stats.halfDays;
+      // Card 3: Days & Leaves (Buffer & Offs)
+      const kpiTotalLeavesDays = document.getElementById('kpiTotalLeavesDays');
+      if (kpiTotalLeavesDays) kpiTotalLeavesDays.textContent = `${stats.totalLeaves}d`;
+      const kpiLeavesCount = document.getElementById('kpiLeavesCount');
+      if (kpiLeavesCount) kpiLeavesCount.textContent = `${stats.totalLeaves}d`;
+      const kpiOffDaysCount = document.getElementById('kpiOffDaysCount');
+      if (kpiOffDaysCount) kpiOffDaysCount.textContent = `${stats.offDaysCount}d`;
+      const kpiAbsentCount = document.getElementById('kpiAbsentCount');
+      if (kpiAbsentCount) kpiAbsentCount.textContent = stats.absentDays;
+      const kpiHalfDayCount = document.getElementById('kpiHalfDayCount');
+      if (kpiHalfDayCount) kpiHalfDayCount.textContent = stats.halfDays;
 
       const kpiBufCount = document.getElementById('kpiBufferCount');
       const kpiBufUnit = document.getElementById('kpiBufferUnit');

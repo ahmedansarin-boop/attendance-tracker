@@ -145,10 +145,10 @@
     <!-- Executive KPI Overview Grid -->
     <section aria-label="Executive Overview" class="kpi-grid no-print">
       
-      <!-- Metric 1: Overall Attendance Compliance -->
+      <!-- Metric 1: Total Days Present & Attendance Percentage -->
       <div class="card">
         <div class="card-header-row">
-          <span class="card-eyebrow">Cumulative Attendance</span>
+          <span class="card-eyebrow">Total Days Present</span>
           <span id="kpiStatusBadge" class="badge-pill badge-emerald">
             <span class="status-beacon beacon-safe"></span>
             <span id="kpiStatusText">COMPLIANT</span>
@@ -156,22 +156,22 @@
         </div>
 
         <div class="card-stat-row">
-          <span id="kpiAggregatePct" class="card-stat-number font-mono-num">87.7%</span>
-          <span class="card-stat-label">Target: <strong id="kpiTargetLabel" class="font-mono-num">80%</strong></span>
+          <span id="kpiPresentDaysMain" class="card-stat-number font-mono-num">52</span>
+          <span class="card-stat-label">/ <strong id="kpiElapsedWorkingDays">57</strong> Days (<strong id="kpiAggregatePct" class="font-mono-num">91.2%</strong>)</span>
         </div>
 
         <div>
           <div class="progress-track">
-            <div id="kpiAggregateProgressBar" class="progress-fill safe" style="width: 87.7%;"></div>
+            <div id="kpiAggregateProgressBar" class="progress-fill safe" style="width: 91.2%;"></div>
           </div>
           <div class="card-footer-metrics">
-            <span>Present: <strong id="kpiPresentDays">50.0</strong>d</span>
-            <span>Elapsed: <strong id="kpiElapsedWorkingDays">57</strong>d</span>
+            <span>Present: <strong id="kpiPresentDays">52</strong>d</span>
+            <span>Leaves / Absent: <strong id="kpiTotalLeavesDays" style="color: var(--rose);">5d</strong></span>
           </div>
         </div>
       </div>
 
-      <!-- Metric 2: Overall Hours & Stay Analytics -->
+      <!-- Metric 2: Hour-Wise Stay & Biometric Hours Percentage -->
       <div class="card">
         <div class="card-header-row">
           <span class="card-eyebrow">Stay Hours Logged</span>
@@ -180,10 +180,13 @@
 
         <div class="card-stat-row">
           <span id="kpiTotalHours" class="card-stat-number font-mono-num" style="color: var(--primary);">442h 18m</span>
-          <span class="card-stat-label">Total Stay</span>
+          <span class="card-stat-label"><strong id="kpiHourPct" class="font-mono-num">99.5%</strong> of <span id="kpiExpectedHours">456h</span></span>
         </div>
 
         <div>
+          <div class="progress-track">
+            <div id="kpiHourProgressBar" class="progress-fill primary" style="width: 99.5%;"></div>
+          </div>
           <div class="card-footer-metrics">
             <span>Avg Daily: <strong id="kpiAvgDailyStay">08:44:17</strong></span>
             <span>Target: <strong>08:00:00</strong></span>
@@ -207,9 +210,9 @@
 
         <div>
           <div class="card-footer-metrics">
-            <span>Leaves: <strong id="kpiLeavesCount" style="color: var(--primary);">2</strong></span>
-            <span>Absent: <strong id="kpiAbsentCount" style="color: var(--rose);">5</strong></span>
-            <span>Half Day: <strong id="kpiHalfDayCount" style="color: var(--amber);">2</strong></span>
+            <span>Leaves / Absent: <strong id="kpiLeavesCount" style="color: var(--rose);">5d</strong></span>
+            <span>Institute Offs: <strong id="kpiOffDaysCount" style="color: var(--text-muted);">22d</strong></span>
+            <span style="display: none;"><strong id="kpiAbsentCount"></strong><strong id="kpiHalfDayCount"></strong><span id="kpiTargetLabel">80%</span></span>
           </div>
         </div>
       </div>
