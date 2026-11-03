@@ -233,7 +233,7 @@
       try {
         const stored = localStorage.getItem('NSTI_FIREBASE_CONFIG');
         if (stored) return JSON.parse(stored);
-      } catch (e) {}
+      } catch (e) { }
       return DEFAULT_FIREBASE_CONFIG;
     },
 
@@ -269,13 +269,13 @@
               isAnonymous: user.isAnonymous || false
             };
             localStorage.setItem('NSTI_AEBAS_CURRENT_USER', JSON.stringify(this.currentUser));
-            
+
             if (user.displayName) {
               state.settings.traineeName = user.displayName;
             }
 
             this.updateAuthUI();
-            
+
             // Switch storage to this user and fetch from cloud
             StorageManager.load();
             if (user.displayName) {
@@ -418,7 +418,7 @@
           if (parsed.authDomain) authDomain = parsed.authDomain;
           if (parsed.projectId) projectId = parsed.projectId;
           if (parsed.storageBucket) storageBucket = parsed.storageBucket;
-        } catch (e) {}
+        } catch (e) { }
       }
 
       if (!apiKey || !projectId) {
@@ -1315,7 +1315,7 @@
         totalDays++;
         const dateStr = this.formatDate(cur);
         const monthKey = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}`;
-        
+
         if (!monthlyMap[monthKey]) {
           const monthName = cur.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
           monthlyMap[monthKey] = {
@@ -1590,7 +1590,7 @@
 
       const toast = document.createElement('div');
       toast.className = `toast toast-${type}`;
-      
+
       let icon = 'ℹ️';
       if (type === 'success') icon = '✔️';
       else if (type === 'warning') icon = '⚠️';
@@ -1622,9 +1622,9 @@
     },
 
     initTheme() {
-      const isDark = state.settings.darkMode || 
+      const isDark = state.settings.darkMode ||
         (!('darkMode' in state.settings) && window.matchMedia('(prefers-color-scheme: dark)').matches);
-      
+
       const icon = document.getElementById('themeToggleIcon');
       if (isDark) {
         document.documentElement.classList.add('dark');
@@ -2407,7 +2407,7 @@
       const [y, m] = monthKey.split('-').map(Number);
       const daysInMonth = new Date(y, m, 0).getDate();
 
-      document.getElementById('registerMonthLabel').textContent = 
+      document.getElementById('registerMonthLabel').textContent =
         new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
       // Build Header: S.No, Trainee Name, 1..31, W.Days, P, HD, L, A, WO, H, Stay, %
@@ -3040,7 +3040,7 @@
         const blob = new Blob([jsonStr], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        
+
         const dateTag = new Date().toISOString().slice(0, 10);
         a.href = url;
         a.download = `NSTI_Mumbai_Biometric_Attendance_Backup_${dateTag}.json`;
