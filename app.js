@@ -275,7 +275,7 @@
             };
             localStorage.setItem('NSTI_AEBAS_CURRENT_USER', JSON.stringify(this.currentUser));
             
-            if (user.displayName && (!state.settings.traineeName || state.settings.traineeName === 'Nadeem Ansari')) {
+            if (user.displayName) {
               state.settings.traineeName = user.displayName;
             }
 
@@ -283,7 +283,13 @@
             
             // Switch storage to this user and fetch from cloud
             StorageManager.load();
+            if (user.displayName) {
+              state.settings.traineeName = user.displayName;
+            }
             await this.loadFromCloud();
+            if (user.displayName) {
+              state.settings.traineeName = user.displayName;
+            }
             if (typeof UIManager !== 'undefined' && UIManager.syncInputsWithState) {
               UIManager.syncInputsWithState();
               UIManager.renderAll();
@@ -324,9 +330,18 @@
             isAnonymous: false
           };
           localStorage.setItem('NSTI_AEBAS_CURRENT_USER', JSON.stringify(this.currentUser));
+          if (result.user.displayName) {
+            state.settings.traineeName = result.user.displayName;
+          }
           this.updateAuthUI();
           StorageManager.load();
+          if (result.user.displayName) {
+            state.settings.traineeName = result.user.displayName;
+          }
           await this.loadFromCloud();
+          if (result.user.displayName) {
+            state.settings.traineeName = result.user.displayName;
+          }
           if (typeof UIManager !== 'undefined') {
             UIManager.syncInputsWithState();
             UIManager.renderAll();
