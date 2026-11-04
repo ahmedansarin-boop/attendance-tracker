@@ -577,6 +577,15 @@
 
       const settingsAccountNameText = document.getElementById('settingsAccountNameText');
       const settingsAccountEmailText = document.getElementById('settingsAccountEmailText');
+      const menuUserName = document.getElementById('menuUserName');
+      const menuUserEmail = document.getElementById('menuUserEmail');
+      const menuUserAvatar = document.getElementById('menuUserAvatar');
+      const menuUserPlaceholder = document.getElementById('menuUserPlaceholder');
+      const menuSyncBeacon = document.getElementById('menuSyncBeacon');
+      const menuSyncText = document.getElementById('menuSyncText');
+      const btnMenuCloudSyncText = document.getElementById('btnMenuCloudSyncText');
+      const btnMenuSignOut = document.getElementById('btnMenuSignOut');
+      const settingsSyncStatusText = document.getElementById('settingsSyncStatusText');
 
       if (this.currentUser) {
         // Logged In State
@@ -622,6 +631,20 @@
         if (settingsAccountNameText) settingsAccountNameText.textContent = this.currentUser.displayName || 'Google Trainee';
         if (settingsAccountEmailText) settingsAccountEmailText.textContent = this.currentUser.email || 'Signed In';
 
+        if (menuUserName) menuUserName.textContent = this.currentUser.displayName || 'Trainee';
+        if (menuUserEmail) menuUserEmail.textContent = this.currentUser.email || 'Cloud Synced';
+        if (menuSyncBeacon) menuSyncBeacon.className = 'status-beacon beacon-safe';
+        if (menuSyncText) menuSyncText.textContent = this.currentUser.isDemo ? 'Demo Mode Active' : 'Cloud Synchronized';
+        if (btnMenuCloudSyncText) btnMenuCloudSyncText.textContent = 'Sync Cloud Now';
+        if (btnMenuSignOut) btnMenuSignOut.classList.remove('hidden');
+        if (settingsSyncStatusText) settingsSyncStatusText.textContent = this.currentUser.isDemo ? 'Demo Offline Mode Active' : 'Realtime Cloud Sync Active';
+        if (this.currentUser.photoURL) {
+          if (menuUserAvatar) { menuUserAvatar.src = this.currentUser.photoURL; menuUserAvatar.style.display = 'block'; }
+          if (menuUserPlaceholder) menuUserPlaceholder.style.display = 'none';
+        } else {
+          if (menuUserAvatar) menuUserAvatar.style.display = 'none';
+          if (menuUserPlaceholder) { menuUserPlaceholder.textContent = initial; menuUserPlaceholder.style.display = 'flex'; }
+        }
         this.updateSyncBadge(false, this.currentUser.isDemo ? 'Demo Mode' : 'Cloud Synced');
       } else {
         // Logged Out State
@@ -634,6 +657,15 @@
         if (settingsAccountNameText) settingsAccountNameText.textContent = 'Guest User (Local Storage)';
         if (settingsAccountEmailText) settingsAccountEmailText.textContent = 'Not signed in to Google';
 
+        if (menuUserName) menuUserName.textContent = 'Guest Trainee';
+        if (menuUserEmail) menuUserEmail.textContent = 'Local Storage Mode';
+        if (menuSyncBeacon) menuSyncBeacon.className = 'status-beacon beacon-neutral';
+        if (menuSyncText) menuSyncText.textContent = 'Local Session Active';
+        if (btnMenuCloudSyncText) btnMenuCloudSyncText.textContent = 'Sign In with Google';
+        if (btnMenuSignOut) btnMenuSignOut.classList.add('hidden');
+        if (menuUserAvatar) menuUserAvatar.style.display = 'none';
+        if (menuUserPlaceholder) { menuUserPlaceholder.textContent = 'U'; menuUserPlaceholder.style.display = 'flex'; }
+        if (settingsSyncStatusText) settingsSyncStatusText.textContent = 'Local Browser Storage';
         this.updateSyncBadge(false, 'Local Storage');
       }
     },
@@ -1822,27 +1854,33 @@
       const isDark = state.settings.darkMode ||
         (!('darkMode' in state.settings) && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
+      const SUN_SVG = `<svg class="icon-svg-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+      const MOON_SVG = `<svg class="icon-svg-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+
       const icon = document.getElementById('themeToggleIcon');
       if (isDark) {
         document.documentElement.classList.add('dark');
-        if (icon) icon.textContent = '☀️';
+        if (icon) icon.innerHTML = SUN_SVG;
       } else {
         document.documentElement.classList.remove('dark');
-        if (icon) icon.textContent = '🌙';
+        if (icon) icon.innerHTML = MOON_SVG;
       }
     },
 
     toggleTheme() {
+      const SUN_SVG = `<svg class="icon-svg-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+      const MOON_SVG = `<svg class="icon-svg-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+
       const isCurrentlyDark = document.documentElement.classList.contains('dark');
       const newDark = !isCurrentlyDark;
       const icon = document.getElementById('themeToggleIcon');
 
       if (newDark) {
         document.documentElement.classList.add('dark');
-        if (icon) icon.textContent = '☀️';
+        if (icon) icon.innerHTML = SUN_SVG;
       } else {
         document.documentElement.classList.remove('dark');
-        if (icon) icon.textContent = '🌙';
+        if (icon) icon.innerHTML = MOON_SVG;
       }
 
       state.settings.darkMode = newDark;
@@ -1935,16 +1973,81 @@
         });
       });
 
-      document.getElementById('btnQuickExport')?.addEventListener('click', () => this.exportJSON());
-      document.getElementById('btnExportFullJSON')?.addEventListener('click', () => this.exportJSON());
-      document.getElementById('btnExportCSV')?.addEventListener('click', () => this.exportCSV());
-      document.getElementById('inputImportJSONFile')?.addEventListener('change', (e) => this.handleFileImport(e));
-      document.getElementById('btnPrintReport')?.addEventListener('click', () => this.openPrintModal());
-      document.getElementById('btnClosePrintModal')?.addEventListener('click', () => this.closePrintModal());
+      // Profile & Tools Dropdown Menu Logic
+      const profileWrapper = document.querySelector('.profile-dropdown-wrapper');
+      const profileDropdown = document.getElementById('profileMenuDropdown');
 
-      // Google Auth & Cloud Sync Modal triggers
-      document.getElementById('btnGoogleSignIn')?.addEventListener('click', () => AuthManager.openAuthModal());
-      document.getElementById('userProfileChip')?.addEventListener('click', () => AuthManager.openAuthModal());
+      const toggleProfileMenu = (e) => {
+        if (e) e.stopPropagation();
+        if (!profileDropdown) return;
+        const isHidden = profileDropdown.classList.contains('hidden');
+        if (isHidden) {
+          profileDropdown.classList.remove('hidden');
+          profileWrapper?.classList.add('open');
+        } else {
+          profileDropdown.classList.add('hidden');
+          profileWrapper?.classList.remove('open');
+        }
+      };
+
+      const closeProfileMenu = () => {
+        if (profileDropdown && !profileDropdown.classList.contains('hidden')) {
+          profileDropdown.classList.add('hidden');
+          profileWrapper?.classList.remove('open');
+        }
+      };
+
+      document.getElementById('userProfileChip')?.addEventListener('click', (e) => toggleProfileMenu(e));
+      document.getElementById('btnGoogleSignIn')?.addEventListener('click', (e) => toggleProfileMenu(e));
+
+      document.addEventListener('click', (e) => {
+        if (profileWrapper && !profileWrapper.contains(e.target)) {
+          closeProfileMenu();
+        }
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeProfileMenu();
+      });
+
+      document.getElementById('btnMenuCloudSync')?.addEventListener('click', () => {
+        closeProfileMenu();
+        if (AuthManager.currentUser) {
+          AuthManager.syncToCloud(false);
+        } else {
+          AuthManager.openAuthModal();
+        }
+      });
+
+      document.getElementById('btnMenuOpenSettings')?.addEventListener('click', () => {
+        closeProfileMenu();
+        this.switchTab('settings');
+      });
+
+      document.getElementById('btnMenuSignOut')?.addEventListener('click', () => {
+        closeProfileMenu();
+        AuthManager.signOut();
+      });
+
+      document.getElementById('inputMenuImportJSON')?.addEventListener('change', (e) => {
+        closeProfileMenu();
+        this.handleFileImport(e);
+      });
+
+      document.getElementById('btnPrintReport')?.addEventListener('click', () => {
+        closeProfileMenu();
+        this.openPrintModal();
+      });
+      document.getElementById('btnExportCSV')?.addEventListener('click', () => {
+        closeProfileMenu();
+        this.exportCSV();
+      });
+      document.getElementById('btnQuickExport')?.addEventListener('click', () => {
+        closeProfileMenu();
+        this.exportJSON();
+      });
+      document.getElementById('btnExportFullJSON')?.addEventListener('click', () => this.exportJSON());
+      document.getElementById('inputImportJSONFile')?.addEventListener('change', (e) => this.handleFileImport(e));
+      document.getElementById('btnClosePrintModal')?.addEventListener('click', () => this.closePrintModal());
       document.getElementById('btnCloudSyncStatus')?.addEventListener('click', () => AuthManager.openAuthModal());
       document.getElementById('btnOpenCloudModalFromSettings')?.addEventListener('click', () => AuthManager.openAuthModal());
       document.getElementById('btnCloseAuthModal')?.addEventListener('click', () => AuthManager.closeAuthModal());
@@ -2306,13 +2409,13 @@
       if (badge) {
         if (stats.status === 'safe') {
           badge.className = 'badge-pill badge-emerald';
-          badge.innerHTML = '<span class="status-beacon beacon-safe"></span><span>COMPLIANT</span>';
+          badge.innerHTML = '<span class="status-beacon beacon-safe"></span><span id="kpiStatusText">COMPLIANT</span>';
         } else if (stats.status === 'warning') {
           badge.className = 'badge-pill badge-amber';
-          badge.innerHTML = '<span class="status-beacon" style="background-color: var(--amber);"></span><span>BORDERLINE</span>';
+          badge.innerHTML = '<span class="status-beacon" style="background-color: var(--amber);"></span><span id="kpiStatusText">BORDERLINE</span>';
         } else {
           badge.className = 'badge-pill badge-rose';
-          badge.innerHTML = '<span class="status-beacon beacon-critical"></span><span>SHORTFALL</span>';
+          badge.innerHTML = '<span class="status-beacon beacon-critical"></span><span id="kpiStatusText">SHORTFALL</span>';
         }
       }
 
@@ -2342,11 +2445,13 @@
       }
       document.getElementById('kpiAvgDailyStay').textContent = stats.avgStayText;
 
-      // Card 3: Days & Leaves (Buffer & Offs)
+      // Card 3: Days & Leaves (Buffer, Highlighted Leaves, Quota)
       const kpiTotalLeavesDays = document.getElementById('kpiTotalLeavesDays');
       if (kpiTotalLeavesDays) kpiTotalLeavesDays.textContent = `${stats.totalLeaves}d`;
       const kpiLeavesCount = document.getElementById('kpiLeavesCount');
       if (kpiLeavesCount) kpiLeavesCount.textContent = `${stats.totalLeaves}d`;
+      const kpiLeavesHeroCount = document.getElementById('kpiLeavesHeroCount');
+      if (kpiLeavesHeroCount) kpiLeavesHeroCount.textContent = String(stats.totalLeaves).padStart(2, '0');
       const kpiOffDaysCount = document.getElementById('kpiOffDaysCount');
       if (kpiOffDaysCount) kpiOffDaysCount.textContent = `${stats.offDaysCount}d`;
       const kpiAbsentCount = document.getElementById('kpiAbsentCount');
@@ -2357,6 +2462,9 @@
       const kpiBufCount = document.getElementById('kpiBufferCount');
       const kpiBufUnit = document.getElementById('kpiBufferUnit');
       const kpiBufIcon = document.getElementById('kpiBufferIcon');
+      const kpiBufferBadgeText = document.getElementById('kpiBufferBadgeText');
+      const kpiLeaveProgressBar = document.getElementById('kpiLeaveProgressBar');
+      const kpiLeaveBufferAdvice = document.getElementById('kpiLeaveBufferAdvice');
 
       if (stats.status === 'safe') {
         if (kpiBufCount) {
@@ -2366,7 +2474,16 @@
         if (kpiBufUnit) kpiBufUnit.textContent = 'Days Safe Buffer';
         if (kpiBufIcon) {
           kpiBufIcon.className = 'badge-pill badge-emerald';
-          kpiBufIcon.innerHTML = '<span>🛡️</span>';
+        }
+        if (kpiBufferBadgeText) kpiBufferBadgeText.textContent = 'Safe Margin';
+        if (kpiLeaveBufferAdvice) {
+          kpiLeaveBufferAdvice.innerHTML = `Leaves / Absent: <strong id="kpiLeavesCount" style="color: var(--amber); font-weight: 800;">${stats.totalLeaves}d</strong> &bull; Buffer: <strong style="color: var(--emerald);">+${stats.buffer}d</strong>`;
+        }
+        if (kpiLeaveProgressBar) {
+          const quota = stats.totalLeaves + stats.buffer;
+          const quotaPct = quota > 0 ? Math.min(100, Math.max(12, (stats.totalLeaves / quota) * 100)) : 0;
+          kpiLeaveProgressBar.style.width = `${quotaPct}%`;
+          kpiLeaveProgressBar.className = 'progress-fill warning';
         }
       } else {
         if (kpiBufCount) {
@@ -2376,7 +2493,14 @@
         if (kpiBufUnit) kpiBufUnit.textContent = 'Days Required';
         if (kpiBufIcon) {
           kpiBufIcon.className = 'badge-pill badge-rose';
-          kpiBufIcon.innerHTML = '<span>⚠️</span>';
+        }
+        if (kpiBufferBadgeText) kpiBufferBadgeText.textContent = 'Action Needed';
+        if (kpiLeaveBufferAdvice) {
+          kpiLeaveBufferAdvice.innerHTML = `Leaves / Absent: <strong id="kpiLeavesCount" style="color: var(--rose); font-weight: 800;">${stats.totalLeaves}d</strong> &bull; Shortfall: <strong style="color: var(--rose);">-${stats.makeup}d</strong>`;
+        }
+        if (kpiLeaveProgressBar) {
+          kpiLeaveProgressBar.style.width = '100%';
+          kpiLeaveProgressBar.className = 'progress-fill critical';
         }
       }
 

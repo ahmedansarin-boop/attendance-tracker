@@ -1498,3 +1498,385 @@ body {
     color: #000000 !important;
   }
 }
+
+
+/* ==========================================================================
+   ENTERPRISE SUITE ENHANCEMENTS: SVGs, POPOVER MENU & KPI REDESIGN
+   ========================================================================== */
+
+/* Universal SVG Icon Alignment */
+.brand-logo-svg {
+  width: 24px;
+  height: 24px;
+  stroke: #ffffff;
+}
+
+.tab-icon-svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  stroke: currentColor;
+}
+
+.icon-svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  stroke: currentColor;
+}
+
+.icon-svg-sm {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  stroke: currentColor;
+}
+
+.icon-svg-xs {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  stroke: currentColor;
+}
+
+/* Nav Tab SVG alignment */
+.nav-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Profile Dropdown Wrapper */
+.profile-dropdown-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.dropdown-chevron-svg {
+  width: 13px;
+  height: 13px;
+  stroke: var(--text-muted);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+  margin-left: 0.15rem;
+}
+
+.profile-dropdown-wrapper.open .dropdown-chevron-svg {
+  transform: rotate(180deg);
+}
+
+/* Floating Popover Menu */
+.profile-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 36px -4px rgba(15, 23, 42, 0.2), 0 4px 16px rgba(15, 23, 42, 0.08);
+  padding: 0.85rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  animation: dropdownSlideDown 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.profile-menu-dropdown.hidden {
+  display: none !important;
+}
+
+@keyframes dropdownSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.menu-user-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.menu-avatar-wrap {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.menu-user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--emerald);
+}
+
+.menu-user-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0284c7, #38bdf8);
+  color: #ffffff;
+  font-size: 1.15rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.menu-user-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-user-name {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.menu-user-email {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 0.1rem;
+}
+
+.menu-user-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #059669;
+  margin-top: 0.2rem;
+}
+
+.menu-action-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-action-btn {
+  width: 100%;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.45rem 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.menu-divider {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 0.15rem 0;
+}
+
+.menu-section-label {
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  padding: 0 0.35rem;
+}
+
+.menu-links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.menu-link-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-main);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.menu-link-item:hover {
+  background-color: var(--bg-subtle);
+  border-color: var(--border-color);
+  color: var(--primary);
+}
+
+.menu-link-item svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  stroke: var(--text-muted);
+  transition: stroke 0.15s ease;
+}
+
+.menu-link-item:hover svg {
+  stroke: var(--primary);
+}
+
+.menu-link-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.menu-link-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.menu-link-desc {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.menu-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-top: 0.25rem;
+}
+
+.menu-footer-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.menu-footer-btn:hover {
+  background-color: var(--bg-surface);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.menu-footer-btn.danger {
+  color: var(--rose);
+}
+
+.menu-footer-btn.danger:hover {
+  border-color: var(--rose);
+  background-color: var(--rose-light);
+}
+
+/* Card 3: Days & Leaves Split Hero & Highlight */
+.card-days-leaves {
+  position: relative;
+}
+
+.card-stat-split-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.stat-split-col {
+  flex: 1;
+}
+
+.kpi-leaves-highlight-pill {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 0.35rem 0.75rem;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(239, 68, 68, 0.08));
+  border: 1.5px solid rgba(245, 158, 11, 0.35);
+  border-radius: var(--radius-md);
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.08);
+  transition: all 0.15s ease;
+}
+
+.kpi-leaves-highlight-pill:hover {
+  border-color: var(--amber);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(245, 158, 11, 0.15);
+}
+
+.leaves-pill-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--amber-text);
+  line-height: 1;
+}
+
+.leaves-pill-number {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--amber-text);
+  line-height: 1.1;
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+}
+
+.leaves-pill-unit {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Dark Mode Overrides for Popover & Pills */
+.dark .profile-menu-dropdown {
+  background-color: #0f172a;
+  border-color: #334155;
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.6);
+}
+
+.dark .menu-user-card {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+.dark .menu-link-item:hover {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+.dark .menu-footer-btn {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+.dark .kpi-leaves-highlight-pill {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(239, 68, 68, 0.12));
+  border-color: rgba(245, 158, 11, 0.45);
+}
