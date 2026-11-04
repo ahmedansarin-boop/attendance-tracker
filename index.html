@@ -529,8 +529,8 @@
           <div class="form-group">
             <label for="selectSaturdayRule" class="form-label">Saturday Weekend Policy</label>
             <select id="selectSaturdayRule" class="form-select">
-              <option value="2nd_4th" selected>2nd & 4th Saturdays Off (DGT / Govt Rule)</option>
-              <option value="all">All Saturdays Off (5-Day Week)</option>
+              <option value="all" selected>All Saturdays Off (5-Day Week - Regular Off)</option>
+              <option value="2nd_4th">2nd & 4th Saturdays Off (DGT / Govt Rule)</option>
               <option value="none">No Saturdays Off (6-Day Week)</option>
             </select>
             <span class="form-help">Standard Central Institute Schedule</span>
@@ -1022,7 +1022,7 @@
   <div id="holidayModal" class="modal-backdrop hidden">
     <div class="modal-dialog">
       <div class="modal-header">
-        <h3 class="modal-title">
+        <h3 id="modalHolidayTitle" class="modal-title">
           <span>🏖️</span>
           <span>Add Custom Leave / Holiday</span>
         </h3>
@@ -1054,7 +1054,7 @@
 
         <div class="modal-footer">
           <button type="button" id="btnCancelHolidayModal" class="btn btn-subtle">Cancel</button>
-          <button type="submit" class="btn btn-primary">Add Leave</button>
+          <button type="submit" id="btnSubmitHolidayModal" class="btn btn-primary">Add Leave</button>
         </div>
       </form>
     </div>
@@ -1449,6 +1449,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
   <!-- Application Logic -->
-  <script src="app.js"></script>
+  <script src="app.js?v=2.2"></script>
 </body>
 </html>

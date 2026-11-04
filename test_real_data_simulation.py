@@ -14,7 +14,7 @@ DEFAULT_END_DATE = '2027-05-31'
 REF_DATE = '2026-11-03'
 
 DEFAULT_HOLIDAYS = [
-    {"date": "2026-08-27", "name": "Eid-e-Milad (Milad-un-Nabi)"},
+    {"date": "2026-08-26", "name": "Eid-e-Milad (Milad-un-Nabi)"},
     {"date": "2026-09-04", "name": "Janmashtami (Krishna Janmashtami)"},
     {"date": "2026-09-14", "name": "Ganesh Chaturthi (Vinayaka Chaturthi)"},
     {"date": "2026-09-24", "name": "Anant Chaturdashi (Ganesh Visarjan)"},

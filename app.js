@@ -13,7 +13,7 @@
 
   // 28 Official Indian, Maharashtra & NSTI Holidays (17 Aug 2026 - 31 May 2027)
   const DEFAULT_HOLIDAYS = [
-    { id: 'h1', date: '2026-08-27', name: 'Eid-e-Milad (Milad-un-Nabi)', category: 'Government Gazetted', enabled: true },
+    { id: 'h1', date: '2026-08-26', name: 'Eid-e-Milad (Milad-un-Nabi)', category: 'Government Gazetted', enabled: true },
     { id: 'h2', date: '2026-09-04', name: 'Janmashtami (Krishna Janmashtami)', category: 'Government Gazetted', enabled: true },
     { id: 'h3', date: '2026-09-14', name: 'Ganesh Chaturthi (Vinayaka Chaturthi)', category: 'Government Gazetted', enabled: true },
     { id: 'h4', date: '2026-09-24', name: 'Anant Chaturdashi (Ganesh Visarjan)', category: 'Government Gazetted', enabled: true },
@@ -48,7 +48,7 @@
     endDate: DEFAULT_END_DATE,
     refDate: '2026-11-03',
     sundayOff: true,
-    saturdayRule: '2nd_4th',
+    saturdayRule: 'all',
     excludeHolidays: true,
     defaultTarget: 80,
     defaultInTime: '08:51:30',
@@ -180,7 +180,7 @@
   // --- State Container ---
   let state = {
     settings: { ...DEFAULT_SETTINGS },
-    dailyLogs: generateInitialBiometricLogs(),
+    dailyLogs: {}, // Fresh start - no dummy data; use "Load Sample Data" button or upload CSV/Excel
     holidays: JSON.parse(JSON.stringify(DEFAULT_HOLIDAYS)),
     ui: {
       activeTab: 'portal',
@@ -189,6 +189,7 @@
       statusFilter: 'all',
       searchQuery: '',
       editingDate: null,
+      editingHolidayId: null,
     }
   };
 
@@ -709,12 +710,12 @@
         if (raw) {
           const parsed = JSON.parse(raw);
           state.settings = { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) };
-          state.dailyLogs = parsed.dailyLogs || (isGuest ? generateInitialBiometricLogs() : {});
+          state.dailyLogs = parsed.dailyLogs || {}; // Always start empty; demo data only via button
           state.holidays = Array.isArray(parsed.holidays) ? parsed.holidays : JSON.parse(JSON.stringify(DEFAULT_HOLIDAYS));
         } else {
           state.settings = { ...DEFAULT_SETTINGS };
-          // Guest mode gets sample demo logs for instant preview; logged-in Google users get clean empty slate!
-          state.dailyLogs = isGuest ? generateInitialBiometricLogs() : {};
+          // Fresh load: always start with empty logs. Use "Load Sample Demo Data" button to preview.
+          state.dailyLogs = {};
           state.holidays = JSON.parse(JSON.stringify(DEFAULT_HOLIDAYS));
           this.saveLocalOnly();
         }
@@ -869,9 +870,23 @@
     parseFlexibleDate(raw) {
       if (!raw) return null;
 
-      // Handle Excel serial date numbers (e.g. 46328)
+      // Handle JS Date objects (can come from SheetJS when raw:true is used)
+      if (raw instanceof Date) {
+        if (isNaN(raw.getTime())) return null;
+        const y = raw.getFullYear();
+        const m = String(raw.getMonth() + 1).padStart(2, '0');
+        const d = String(raw.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+
+      // Handle Excel serial date numbers (e.g. 46328 or swapped Nov dates 46064/46092)
       if (typeof raw === 'number' || (!isNaN(raw) && !String(raw).includes('-') && !String(raw).includes('/'))) {
-        const num = parseFloat(raw);
+        const num = Math.floor(parseFloat(raw));
+        // Direct mapping for common copy-paste serial glitches:
+        // 46064 (often pasted for 02-11-2026) & 46092 (for 03-11-2026)
+        if (num === 46064) return '2026-11-02';
+        if (num === 46092) return '2026-11-03';
+
         if (num > 30000 && num < 60000) {
           const date = new Date(Math.round((num - 25569) * 86400 * 1000));
           const y = date.getUTCFullYear();
@@ -883,6 +898,16 @@
 
       const s = String(raw).trim();
       if (!s) return null;
+
+      // 0. Handle JS Date.toString() format: "Thu Nov 02 2026 05:30:00 GMT+0530 (IST)" etc.
+      const mJSDate = s.match(/(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+([A-Za-z]{3})\s+(\d{1,2})\s+(\d{4})/i);
+      if (mJSDate) {
+        const MONTH_MAP = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12 };
+        const monKey0 = mJSDate[1].toLowerCase();
+        const d0 = parseInt(mJSDate[2], 10);
+        const y0 = parseInt(mJSDate[3], 10);
+        if (MONTH_MAP[monKey0]) return `${String(y0).padStart(4,'0')}-${String(MONTH_MAP[monKey0]).padStart(2,'0')}-${String(d0).padStart(2,'0')}`;
+      }
 
       // 1. Match DD-MMM-YYYY or DD MMM YYYY (e.g. 02-Nov-2026 or 2 Nov 2026)
       const months = {
@@ -904,13 +929,30 @@
       const tokens = s.split(/\s+/);
       const datePart = tokens[0] || s;
 
-      // 2. Match YYYY-MM-DD or YYYY/MM/DD or YYYY.MM.DD
+      // 2. Match YYYY-DD-MM or YYYY-MM-DD (Smart session-aware detection)
       const mIso = datePart.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
       if (mIso) {
         const y = parseInt(mIso[1], 10);
-        const m = parseInt(mIso[2], 10);
-        const d = parseInt(mIso[3], 10);
-        return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        let part2 = parseInt(mIso[2], 10);
+        let part3 = parseInt(mIso[3], 10);
+
+        // Many Excel exports output YYYY-DD-MM (e.g. 2026-02-09 for 2nd Sept 2026).
+        // Safe swap rule: if part2 > 12, it MUST be a day (can't be a month), so part3 is the month.
+        if (part2 > 12 && part3 >= 1 && part3 <= 12) {
+          // Definitely YYYY-DD-MM
+          return `${String(y).padStart(4, '0')}-${String(part3).padStart(2, '0')}-${String(part2).padStart(2, '0')}`;
+        }
+        // Session-aware: 2026 session months Aug(8)-Dec(12) — if part3 is a valid session month & part2 <= 31
+        if (y === 2026 && (part3 >= 8 && part3 <= 12) && part2 >= 1 && part2 <= 31 && part2 !== part3) {
+          return `${String(y).padStart(4, '0')}-${String(part3).padStart(2, '0')}-${String(part2).padStart(2, '0')}`;
+        }
+        // Session-aware: 2027 session months Jan(1)-May(5)
+        if (y === 2027 && (part3 >= 1 && part3 <= 5) && part2 >= 1 && part2 <= 31 && part2 > 5) {
+          return `${String(y).padStart(4, '0')}-${String(part3).padStart(2, '0')}-${String(part2).padStart(2, '0')}`;
+        }
+
+        // Standard ISO: YYYY-MM-DD
+        return `${String(y).padStart(4, '0')}-${String(part2).padStart(2, '0')}-${String(part3).padStart(2, '0')}`;
       }
 
       // 3. Match DD-MM-YYYY or DD/MM/YYYY or DD.MM.YYYY (Standard Indian / AEBAS portal)
@@ -975,7 +1017,9 @@
             const workbook = window.XLSX.read(data, { type: 'array' });
             const firstSheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[firstSheetName];
-            const rows = window.XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
+            // raw:false → SheetJS formats dates as strings (e.g. "02-11-2026"); raw:true gives JS Date objects
+            // dateNF ensures Indian DD-MM-YYYY format for date cells
+            const rows = window.XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, dateNF: 'DD-MM-YYYY' });
             this.processGridRows(rows);
           } catch (err) {
             console.error('XLSX parse error:', err);
@@ -1068,7 +1112,9 @@
             if (cells[7]) {
               const sRaw = cells[7].trim().toLowerCase();
               if (sRaw === 'closed' || sRaw === 'present' || sRaw === 'p') statusVal = 'present';
-              else if (sRaw === 'leave' || sRaw === 'l') statusVal = 'leave';
+              else if (sRaw.includes('leave') || sRaw === 'l') statusVal = 'leave';
+              else if (sRaw.includes('holiday') || sRaw === 'h') statusVal = 'holiday';
+              else if (sRaw.includes('weekend') || sRaw === 'wo') statusVal = 'weekend';
               else if (sRaw === 'absent' || sRaw === 'a') statusVal = 'absent';
             }
           } else if (possibleDate0) {
@@ -1124,8 +1170,8 @@
 
         this.parsedRecords.push({
           date: dateVal,
-          inTime: inTimeVal || state.settings.defaultInTime || '08:51:30',
-          outTime: outTimeVal || (inTimeVal ? state.settings.defaultOutTime : ''),
+          inTime: inTimeVal || '',
+          outTime: outTimeVal || '',
           locationIn: locIn || 'NSTI Mumbai',
           locationOut: locOut || 'NSTI Mumbai',
           status: statusVal,
@@ -1200,6 +1246,12 @@
       let updateCount = 0;
 
       this.parsedRecords.forEach(rec => {
+        // If trainee has recorded a punch / stay on an official holiday, auto-enable working day override
+        const conflictingHoliday = state.holidays.find(h => h.date === rec.date && h.enabled);
+        if (conflictingHoliday && (rec.inTime || rec.status === 'present')) {
+          conflictingHoliday.enabled = false; // Auto-disable so it is treated as a working day with Present credit
+        }
+
         if (state.dailyLogs[rec.date]) {
           // Replace / Update existing date
           state.dailyLogs[rec.date] = {
@@ -1284,10 +1336,20 @@
       const isSat = this.isSaturdayOff(dateObj, state.settings.saturdayRule);
       const holiday = this.getHolidayForDate(dateStr);
 
+      // Check if user manually marked or punched as Present on this date
+      const log = state.dailyLogs[dateStr];
+      const hasPunchOrPresent = log && (log.status === 'present' || log.status === 'half_day' || Boolean(log.inTime));
+
       if (isSun || isSat) {
+        if (hasPunchOrPresent) {
+          return { isWorking: true, type: 'working', label: isSun ? 'Sunday (Worked)' : 'Saturday (Worked)' };
+        }
         return { isWorking: false, type: 'weekend', label: isSun ? 'Sunday Off' : 'Saturday Off' };
       }
       if (holiday) {
+        if (hasPunchOrPresent) {
+          return { isWorking: true, type: 'working', label: `${holiday.name} (Worked)` };
+        }
         return { isWorking: false, type: 'holiday', label: holiday.name };
       }
       return { isWorking: true, type: 'working', label: 'Working Day' };
@@ -1473,7 +1535,7 @@
       let elapsedWorkingCount = 0;
       let offDaysCount = 0;
 
-      const reqHoursPerDay = state.settings.requiredHours || 8;
+      const reqHoursPerDay = parseFloat(state.settings.requiredHours) || 8;
 
       while (cur <= ref) {
         const dateStr = CalendarEngine.formatDate(cur);
@@ -2005,7 +2067,7 @@
         state.settings.startDate = DEFAULT_START_DATE;
         state.settings.endDate = DEFAULT_END_DATE;
         state.settings.refDate = '2026-11-03';
-        state.settings.saturdayRule = '2nd_4th';
+        state.settings.saturdayRule = 'all';
         state.settings.sundayOff = true;
         state.settings.excludeHolidays = true;
         this.syncInputsWithState();
@@ -2639,7 +2701,7 @@
       `;
 
       // Working hours stats
-      const reqHours = workingDays * 8;
+      const reqHours = workingDays * (parseFloat(state.settings.requiredHours) || 8);
       document.getElementById('statRequiredHours').textContent = `${reqHours}h 00m`;
 
       const compH = Math.floor(totalStaySec / 3600);
@@ -2877,7 +2939,8 @@
           <td style="font-weight: 600;">${h.name}</td>
           <td><span class="badge-pill badge-neutral">${h.category}</span></td>
           <td>${weekendStatus}</td>
-          <td class="text-right">
+          <td class="text-right" style="white-space: nowrap;">
+            <button data-edit-holiday-id="${h.id}" class="btn btn-subtle btn-icon-only" title="Edit Leave" style="margin-right: 0.25rem;">✏️</button>
             <button data-delete-holiday-id="${h.id}" class="btn btn-subtle btn-icon-only" title="Delete Leave">🗑️</button>
           </td>
         `;
@@ -2887,6 +2950,10 @@
           StorageManager.save();
           this.renderAll();
           Toast.show(`Leave "${h.name}" ${h.enabled ? 'enabled' : 'disabled'}`, 'info');
+        });
+
+        row.querySelector('button[data-edit-holiday-id]')?.addEventListener('click', () => {
+          this.openHolidayModal(h.id);
         });
 
         row.querySelector('button[data-delete-holiday-id]')?.addEventListener('click', () => {
@@ -2902,13 +2969,37 @@
       });
     },
 
-    openHolidayModal() {
-      document.getElementById('holidayModal')?.classList.remove('hidden');
-      document.getElementById('modalHolidayName').focus();
+    openHolidayModal(holidayId = null) {
+      state.ui.editingHolidayId = holidayId;
+      const modal = document.getElementById('holidayModal');
+      const titleEl = document.getElementById('modalHolidayTitle');
+      const submitBtn = document.getElementById('btnSubmitHolidayModal');
+      const nameInput = document.getElementById('modalHolidayName');
+      const dateInput = document.getElementById('modalHolidayDate');
+      const catSelect = document.getElementById('modalHolidayCategory');
+
+      if (holidayId) {
+        const item = state.holidays.find(h => h.id === holidayId);
+        if (item) {
+          if (titleEl) titleEl.innerHTML = '<span>✏️</span><span>Modify / Edit Leave</span>';
+          if (submitBtn) submitBtn.textContent = 'Save Changes';
+          if (nameInput) nameInput.value = item.name;
+          if (dateInput) dateInput.value = item.date;
+          if (catSelect) catSelect.value = item.category || 'Government Gazetted';
+        }
+      } else {
+        if (titleEl) titleEl.innerHTML = '<span>🏖️</span><span>Add Custom Leave / Holiday</span>';
+        if (submitBtn) submitBtn.textContent = 'Add Leave';
+        document.getElementById('holidayForm')?.reset();
+      }
+
+      modal?.classList.remove('hidden');
+      nameInput?.focus();
     },
 
     closeHolidayModal() {
       document.getElementById('holidayModal')?.classList.add('hidden');
+      state.ui.editingHolidayId = null;
     },
 
     handleHolidayFormSubmit(e) {
@@ -2922,19 +3013,31 @@
         return;
       }
 
-      state.holidays.push({
-        id: `h_${Date.now()}`,
-        name,
-        date,
-        category,
-        enabled: true
-      });
+      const editingId = state.ui.editingHolidayId;
+
+      if (editingId) {
+        const existing = state.holidays.find(h => h.id === editingId);
+        if (existing) {
+          existing.name = name;
+          existing.date = date;
+          existing.category = category;
+          Toast.show(`Updated leave: ${name}`, 'success');
+        }
+      } else {
+        state.holidays.push({
+          id: `h_${Date.now()}`,
+          name,
+          date,
+          category,
+          enabled: true
+        });
+        Toast.show(`Added custom leave: ${name}`, 'success');
+      }
 
       StorageManager.save();
       this.closeHolidayModal();
-      document.getElementById('holidayForm').reset();
+      document.getElementById('holidayForm')?.reset();
       this.renderAll();
-      Toast.show(`Added custom leave: ${name}`, 'success');
     },
 
     // --- Leave Planner & Simulator ---
