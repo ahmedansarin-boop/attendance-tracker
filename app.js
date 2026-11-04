@@ -870,36 +870,61 @@
     parseFlexibleDate(raw) {
       if (!raw) return null;
 
-      // Handle JS Date objects (can come from SheetJS when raw:true is used)
+      // Complete mapping for Excel serial numbers where Excel with US locale (M/D/Y)
+      // swapped Day and Month for Indian DD/MM/YYYY dates entered for days 1 to 12
+      const EXCEL_SERIAL_SWAP_MAP = {
+        // September (Days 1 to 12 of Sep 2026)
+        46031: '2026-09-01', 46062: '2026-09-02', 46090: '2026-09-03', 46121: '2026-09-04',
+        46151: '2026-09-05', 46182: '2026-09-06', 46212: '2026-09-07', 46243: '2026-09-08',
+        46274: '2026-09-09', 46304: '2026-09-10', 46335: '2026-09-11', 46365: '2026-09-12',
+        // October (Days 1 to 12 of Oct 2026)
+        46032: '2026-10-01', 46063: '2026-10-02', 46091: '2026-10-03', 46122: '2026-10-04',
+        46152: '2026-10-05', 46183: '2026-10-06', 46213: '2026-10-07', 46244: '2026-10-08',
+        46275: '2026-10-09', 46305: '2026-10-10', 46336: '2026-10-11', 46366: '2026-10-12',
+        // November (Days 1 to 12 of Nov 2026)
+        46033: '2026-11-01', 46064: '2026-11-02', 46092: '2026-11-03', 46123: '2026-11-04',
+        46153: '2026-11-05', 46184: '2026-11-06', 46214: '2026-11-07', 46245: '2026-11-08',
+        46276: '2026-11-09', 46306: '2026-11-10', 46337: '2026-11-11', 46367: '2026-11-12',
+        // December (Days 1 to 12 of Dec 2026)
+        46034: '2026-12-01', 46065: '2026-12-02', 46093: '2026-12-03', 46124: '2026-12-04',
+        46154: '2026-12-05', 46185: '2026-12-06', 46215: '2026-12-07', 46246: '2026-12-08',
+        46277: '2026-12-09', 46307: '2026-12-10', 46338: '2026-12-11', 46368: '2026-12-12'
+      };
+
+      // 1. Check JS Date objects (can come from SheetJS)
       if (raw instanceof Date) {
         if (isNaN(raw.getTime())) return null;
-        const y = raw.getFullYear();
-        const m = String(raw.getMonth() + 1).padStart(2, '0');
-        const d = String(raw.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
+        let y = raw.getFullYear();
+        let m = raw.getMonth() + 1;
+        let d = raw.getDate();
+        if (y === 2026 && m <= 7 && d >= 8 && d <= 12) {
+          const t = m; m = d; d = t;
+        }
+        return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       }
 
-      // Handle Excel serial date numbers (e.g. 46328 or swapped Nov dates 46064/46092)
-      if (typeof raw === 'number' || (!isNaN(raw) && !String(raw).includes('-') && !String(raw).includes('/'))) {
+      // 2. Check numeric Excel serials
+      if (typeof raw === 'number' || (!isNaN(raw) && !String(raw).includes('-') && !String(raw).includes('/') && !String(raw).includes(':'))) {
         const num = Math.floor(parseFloat(raw));
-        // Direct mapping for common copy-paste serial glitches:
-        // 46064 (often pasted for 02-11-2026) & 46092 (for 03-11-2026)
-        if (num === 46064) return '2026-11-02';
-        if (num === 46092) return '2026-11-03';
-
+        if (EXCEL_SERIAL_SWAP_MAP[num]) {
+          return EXCEL_SERIAL_SWAP_MAP[num];
+        }
         if (num > 30000 && num < 60000) {
           const date = new Date(Math.round((num - 25569) * 86400 * 1000));
-          const y = date.getUTCFullYear();
-          const m = String(date.getUTCMonth() + 1).padStart(2, '0');
-          const d = String(date.getUTCDate()).padStart(2, '0');
-          return `${y}-${m}-${d}`;
+          let y = date.getUTCFullYear();
+          let m = date.getUTCMonth() + 1;
+          let d = date.getUTCDate();
+          if (y === 2026 && m <= 7 && d >= 8 && d <= 12) {
+            const t = m; m = d; d = t;
+          }
+          return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         }
       }
 
       const s = String(raw).trim();
       if (!s) return null;
 
-      // 0. Handle JS Date.toString() format: "Thu Nov 02 2026 05:30:00 GMT+0530 (IST)" etc.
+      // 3. Handle JS Date.toString() format
       const mJSDate = s.match(/(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+([A-Za-z]{3})\s+(\d{1,2})\s+(\d{4})/i);
       if (mJSDate) {
         const MONTH_MAP = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12 };
@@ -909,11 +934,8 @@
         if (MONTH_MAP[monKey0]) return `${String(y0).padStart(4,'0')}-${String(MONTH_MAP[monKey0]).padStart(2,'0')}-${String(d0).padStart(2,'0')}`;
       }
 
-      // 1. Match DD-MMM-YYYY or DD MMM YYYY (e.g. 02-Nov-2026 or 2 Nov 2026)
-      const months = {
-        jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
-        jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12
-      };
+      // 4. Match DD-MMM-YYYY or DD MMM YYYY (e.g. 02-Nov-2026 or 2 Nov 2026)
+      const months = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
       const mAlpha = s.match(/(\d{1,2})[-/. ]([A-Za-z]{3,9})[-/. ](\d{2,4})/);
       if (mAlpha) {
         const d = parseInt(mAlpha[1], 10);
@@ -925,43 +947,57 @@
         }
       }
 
-      // If full datetime like "02-11-2026 08:51:30", isolate the first date token
       const tokens = s.split(/\s+/);
       const datePart = tokens[0] || s;
 
-      // 2. Match YYYY-DD-MM or YYYY-MM-DD (Smart session-aware detection)
+      // 5. Match ISO: YYYY-MM-DD or YYYY-DD-MM
       const mIso = datePart.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
       if (mIso) {
         const y = parseInt(mIso[1], 10);
         let part2 = parseInt(mIso[2], 10);
         let part3 = parseInt(mIso[3], 10);
 
-        // Many Excel exports output YYYY-DD-MM (e.g. 2026-02-09 for 2nd Sept 2026).
-        // Safe swap rule: if part2 > 12, it MUST be a day (can't be a month), so part3 is the month.
         if (part2 > 12 && part3 >= 1 && part3 <= 12) {
-          // Definitely YYYY-DD-MM
           return `${String(y).padStart(4, '0')}-${String(part3).padStart(2, '0')}-${String(part2).padStart(2, '0')}`;
         }
-        // Session-aware: 2026 session months Aug(8)-Dec(12) — if part3 is a valid session month & part2 <= 31
         if (y === 2026 && (part3 >= 8 && part3 <= 12) && part2 >= 1 && part2 <= 31 && part2 !== part3) {
           return `${String(y).padStart(4, '0')}-${String(part3).padStart(2, '0')}-${String(part2).padStart(2, '0')}`;
         }
-        // Session-aware: 2027 session months Jan(1)-May(5)
         if (y === 2027 && (part3 >= 1 && part3 <= 5) && part2 >= 1 && part2 <= 31 && part2 > 5) {
           return `${String(y).padStart(4, '0')}-${String(part3).padStart(2, '0')}-${String(part2).padStart(2, '0')}`;
         }
-
-        // Standard ISO: YYYY-MM-DD
         return `${String(y).padStart(4, '0')}-${String(part2).padStart(2, '0')}-${String(part3).padStart(2, '0')}`;
       }
 
-      // 3. Match DD-MM-YYYY or DD/MM/YYYY or DD.MM.YYYY (Standard Indian / AEBAS portal)
-      const mIndian = datePart.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+      // 6. Match Indian or US slash/dash: DD-MM-YYYY, DD/MM/YYYY, D/M/YY (support 2-digit years)
+      const mIndian = datePart.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);
       if (mIndian) {
-        const d = parseInt(mIndian[1], 10);
-        const m = parseInt(mIndian[2], 10);
-        const y = parseInt(mIndian[3], 10);
-        return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        let p1 = parseInt(mIndian[1], 10);
+        let p2 = parseInt(mIndian[2], 10);
+        let y = parseInt(mIndian[3], 10);
+        if (y < 100) y += 2000;
+
+        let day = p1;
+        let month = p2;
+
+        if (y === 2026) {
+          if (p1 <= 7 && (p2 >= 8 && p2 <= 12)) {
+            // DD-MM-YYYY where month is in session (e.g. 02-09-2026)
+            day = p1;
+            month = p2;
+          } else if ((p1 >= 8 && p1 <= 12) && p2 <= 7) {
+            // US MM/DD/YYYY format (e.g. 09/02/2026 -> 2nd Sep)
+            day = p2;
+            month = p1;
+          } else if (p1 > 12) {
+            day = p1;
+            month = p2;
+          } else if (p2 > 12) {
+            day = p2;
+            month = p1;
+          }
+        }
+        return `${String(y).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       }
 
       return null;
@@ -970,19 +1006,27 @@
     parseFlexibleTime(raw) {
       if (raw === null || raw === undefined) return null;
 
-      // Excel fractional day time number (e.g. 0.36909722 -> 08:51:30)
-      if (typeof raw === 'number' && raw >= 0 && raw <= 1) {
-        const totalSec = Math.round(raw * 86400);
-        const h = Math.floor(totalSec / 3600);
-        const m = Math.floor((totalSec % 3600) / 60);
-        const s = totalSec % 60;
-        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      // Handle Excel numbers:
+      // Fractional day time number (e.g. 0.36909722 -> 08:51:30)
+      // OR full datetime serial (e.g. 46062.386481481481 -> extract fractional part 0.386481481481 -> 09:16:32)
+      if (typeof raw === 'number' || (!isNaN(raw) && !String(raw).includes(':') && !String(raw).includes('-') && !String(raw).includes('/'))) {
+        const num = parseFloat(raw);
+        if (!isNaN(num)) {
+          let fraction = num >= 1 ? (num - Math.floor(num)) : num;
+          if (fraction > 0.0001 && fraction < 0.9999) {
+            const totalSec = Math.round(fraction * 86400);
+            const h = Math.floor(totalSec / 3600);
+            const m = Math.floor((totalSec % 3600) / 60);
+            const s = totalSec % 60;
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+          }
+        }
       }
 
       const s = String(raw).trim();
-      if (!s) return null;
+      if (!s || s === '-' || s === '--') return null;
 
-      // If contains time with optional AM/PM
+      // If contains time with optional AM/PM (e.g. "17-08-2026 15:01:54" or "9:16:00" or "09:16")
       const timeMatch = s.match(/(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?\s*(AM|PM)?/i);
       if (timeMatch) {
         let h = parseInt(timeMatch[1], 10);
@@ -1015,12 +1059,38 @@
           try {
             const data = new Uint8Array(e.target.result);
             const workbook = window.XLSX.read(data, { type: 'array' });
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            // raw:false → SheetJS formats dates as strings (e.g. "02-11-2026"); raw:true gives JS Date objects
-            // dateNF ensures Indian DD-MM-YYYY format for date cells
-            const rows = window.XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, dateNF: 'DD-MM-YYYY' });
-            this.processGridRows(rows);
+            
+            // SMART MULTI-SHEET SCAN:
+            // Combine rows from all sheets that contain attendance data
+            // (e.g. 'Attendance Calculator' with leaves + 'Sheet1' with raw punches)
+            const allRows = [];
+            let primarySheetFound = false;
+
+            const sheetNames = [...workbook.SheetNames].sort((a, b) => {
+              const aScore = /attendance|calculator|register/i.test(a) ? 2 : 1;
+              const bScore = /attendance|calculator|register/i.test(b) ? 2 : 1;
+              return bScore - aScore;
+            });
+
+            sheetNames.forEach(sheetName => {
+              const worksheet = workbook.Sheets[sheetName];
+              if (!worksheet) return;
+              const rows = window.XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
+              if (rows && rows.length > 0) {
+                const hasDates = rows.some(r => Array.isArray(r) && r.some(c => this.parseFlexibleDate(c)));
+                if (hasDates) {
+                  allRows.push(...rows);
+                  primarySheetFound = true;
+                }
+              }
+            });
+
+            if (!primarySheetFound && workbook.SheetNames.length > 0) {
+              const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+              allRows.push(...window.XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: true }));
+            }
+
+            this.processGridRows(allRows);
           } catch (err) {
             console.error('XLSX parse error:', err);
             Toast.show('Error reading Excel spreadsheet: ' + err.message, 'error');
@@ -1074,7 +1144,7 @@
       }
 
       this.parsedRecords = [];
-      const seenDates = new Set();
+      const recordsMap = new Map(); // date -> record object
 
       rows.forEach(row => {
         if (!Array.isArray(row) || row.length === 0) return;
@@ -1104,11 +1174,11 @@
 
           if (possibleDate1) {
             dateVal = possibleDate1;
-            if (cells[2]) locIn = cells[2];
-            if (cells[3]) locOut = cells[3];
+            if (cells[2] && cells[2] !== '-') locIn = cells[2];
+            if (cells[3] && cells[3] !== '-') locOut = cells[3];
             inTimeVal = this.parseFlexibleTime(cells[4]);
             outTimeVal = cells[5] ? this.parseFlexibleTime(cells[5]) : null;
-            if (cells[6]) stayStr = cells[6];
+            if (cells[6] && cells[6] !== '-') stayStr = cells[6];
             if (cells[7]) {
               const sRaw = cells[7].trim().toLowerCase();
               if (sRaw === 'closed' || sRaw === 'present' || sRaw === 'p') statusVal = 'present';
@@ -1121,9 +1191,9 @@
             dateVal = possibleDate0;
             inTimeVal = this.parseFlexibleTime(cells[1]);
             outTimeVal = cells[2] ? this.parseFlexibleTime(cells[2]) : null;
-            if (cells[3]) locIn = cells[3];
-            if (cells[4]) locOut = cells[4];
-            if (cells[5]) stayStr = cells[5];
+            if (cells[3] && cells[3] !== '-') locIn = cells[3];
+            if (cells[4] && cells[4] !== '-') locOut = cells[4];
+            if (cells[5] && cells[5] !== '-') stayStr = cells[5];
           }
         } else {
           // Less columns: scan cells
@@ -1141,8 +1211,6 @@
         }
 
         if (!dateVal) return;
-        if (seenDates.has(dateVal)) return; // Keep latest if duplicated in input file
-        seenDates.add(dateVal);
 
         // Compute Stay duration & Auto-status
         let staySeconds = 0;
@@ -1157,18 +1225,44 @@
           staySeconds = BiometricEngine.parseDurationToSeconds(stayStr);
         }
 
-        // Determine status: As requested, any punch / stay (even 1 hour or 'Closed') counts as Present!
+        // If row has no punch times, no stay, and no explicit status from file, skip empty calendar template row
+        if (!inTimeVal && !outTimeVal && staySeconds === 0 && !statusVal) {
+          return;
+        }
+
+        // Determine status: Any punch or stay counts as Present!
         if (!statusVal || statusVal === 'closed') {
           if (inTimeVal || staySeconds > 0) {
             statusVal = 'present';
           } else {
             statusVal = 'absent';
           }
+        } else if ((statusVal === 'weekend' || statusVal === 'holiday') && (inTimeVal || staySeconds > 0)) {
+          // Punch on weekend/holiday counts as present!
+          statusVal = 'present';
         }
 
         const isExisting = Boolean(state.dailyLogs[dateVal]);
 
-        this.parsedRecords.push({
+        // Smart Record Merge:
+        // If date already seen (from earlier sheet/row):
+        if (recordsMap.has(dateVal)) {
+          const existing = recordsMap.get(dateVal);
+          // If new row has punches, prefer punches:
+          if ((inTimeVal || staySeconds > 0) && (!existing.inTime || existing.status !== 'present')) {
+            existing.inTime = inTimeVal || existing.inTime;
+            existing.outTime = outTimeVal || existing.outTime;
+            existing.stayText = stayDisplay !== '00:00:00' ? stayDisplay : existing.stayText;
+            existing.status = 'present';
+            existing.locationIn = locIn;
+            existing.locationOut = locOut;
+          } else if (statusVal === 'leave' && existing.status !== 'present') {
+            existing.status = 'leave';
+          }
+          return;
+        }
+
+        recordsMap.set(dateVal, {
           date: dateVal,
           inTime: inTimeVal || '',
           outTime: outTimeVal || '',
@@ -1179,6 +1273,11 @@
           isExisting
         });
       });
+
+      this.parsedRecords = Array.from(recordsMap.values());
+
+      // Sort chronological
+      this.parsedRecords.sort((a, b) => a.date.localeCompare(b.date));
 
       if (this.parsedRecords.length === 0) {
         Toast.show('No valid attendance dates detected in the provided file/text.', 'warning');
