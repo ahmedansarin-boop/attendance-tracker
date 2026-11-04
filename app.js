@@ -2303,19 +2303,13 @@
         dayLabel.textContent = `${CalendarEngine.formatDisplayDate(todayStr)} (${todayDateObj.toLocaleDateString('en-US', { weekday: 'long' })})`;
       }
 
-      const log = state.dailyLogs[todayStr] || {
-        status: 'present',
-        locationIn: 'NSTI Mumbai',
-        locationOut: 'NSTI Mumbai',
-        inTime: state.settings.defaultInTime || '08:51:30',
-        outTime: state.settings.defaultOutTime || '17:35:47'
-      };
+      const log = state.dailyLogs[todayStr] || null; // null = no record yet (truly fresh)
 
-      const inVal = log.inTime || '--:--:--';
-      const outVal = log.outTime || '--:--:--';
-      const stay = BiometricEngine.calculateStay(log.inTime, log.outTime);
+      const inVal = log ? (log.inTime || '--:--:--') : '--:--:--';
+      const outVal = log ? (log.outTime || '--:--:--') : '--:--:--';
+      const stay = log ? BiometricEngine.calculateStay(log.inTime, log.outTime) : { text: '--:--:--' };
 
-      document.getElementById('displayLocationIn').textContent = log.locationIn || 'NSTI Mumbai';
+      document.getElementById('displayLocationIn').textContent = log ? (log.locationIn || 'NSTI Mumbai') : '--';
       document.getElementById('displayInTime').textContent = inVal;
       document.getElementById('displayOutTime').textContent = outVal;
       document.getElementById('displayStay').textContent = stay.text;
@@ -2324,7 +2318,11 @@
       let label = 'PRESENT';
       let badgeClass = 'badge-pill badge-emerald';
 
-      if (log.status === 'half_day') {
+      if (!log) {
+        // No record at all — show neutral "NOT PUNCHED" state
+        label = 'NOT PUNCHED';
+        badgeClass = 'badge-pill badge-secondary';
+      } else if (log.status === 'half_day') {
         label = 'HALF DAY';
         badgeClass = 'badge-pill badge-amber';
       } else if (log.status === 'leave') {
@@ -2344,10 +2342,10 @@
         document.getElementById(`btnQuick${s}`)?.classList.remove('active-present', 'active-half', 'active-leave', 'active-absent');
       });
 
-      if (log.status === 'present') document.getElementById('btnQuickPresent')?.classList.add('active-present');
-      else if (log.status === 'half_day') document.getElementById('btnQuickHalfDay')?.classList.add('active-half');
-      else if (log.status === 'leave') document.getElementById('btnQuickLeave')?.classList.add('active-leave');
-      else if (log.status === 'absent') document.getElementById('btnQuickAbsent')?.classList.add('active-absent');
+      if (log && log.status === 'present') document.getElementById('btnQuickPresent')?.classList.add('active-present');
+      else if (log && log.status === 'half_day') document.getElementById('btnQuickHalfDay')?.classList.add('active-half');
+      else if (log && log.status === 'leave') document.getElementById('btnQuickLeave')?.classList.add('active-leave');
+      else if (log && log.status === 'absent') document.getElementById('btnQuickAbsent')?.classList.add('active-absent');
     },
 
     // --- SUB-TAB 1: DETAILS TABLE (EXACT MATCH TO USER SCREENSHOT) ---
