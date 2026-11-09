@@ -561,6 +561,15 @@
     },
 
     updateAuthUI() {
+      const appLoginGate = document.getElementById('appLoginGate');
+      if (this.currentUser) {
+        if (appLoginGate) appLoginGate.classList.add('hidden');
+        document.body.classList.remove('auth-locked');
+      } else {
+        if (appLoginGate) appLoginGate.classList.remove('hidden');
+        document.body.classList.add('auth-locked');
+      }
+
       const btnGoogleSignIn = document.getElementById('btnGoogleSignIn');
       const userProfileChip = document.getElementById('userProfileChip');
       const userAvatarImg = document.getElementById('userAvatarImg');
@@ -2050,6 +2059,14 @@
           profileWrapper?.classList.remove('open');
         }
       };
+
+      // Strict Login Gate Action Listeners
+      document.getElementById('btnGateGoogleSignIn')?.addEventListener('click', () => {
+        AuthManager.signInWithGoogle();
+      });
+      document.getElementById('btnGateDemoLogin')?.addEventListener('click', () => {
+        AuthManager.loginDemoUser();
+      });
 
       document.getElementById('userProfileChip')?.addEventListener('click', (e) => toggleProfileMenu(e));
       document.getElementById('btnGoogleSignIn')?.addEventListener('click', (e) => toggleProfileMenu(e));
