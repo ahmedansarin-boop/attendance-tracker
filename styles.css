@@ -1213,9 +1213,9 @@ body {
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 1.25rem;
+  padding: 2rem 1rem;
   overflow-y: auto;
 }
 
@@ -1225,6 +1225,8 @@ body {
   border-radius: var(--radius-xl);
   width: 100%;
   max-width: 540px;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: var(--shadow-lg);
   padding: 1.5rem;
   display: flex;
@@ -1879,4 +1881,234 @@ body {
 .dark .kpi-leaves-highlight-pill {
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(239, 68, 68, 0.12));
   border-color: rgba(245, 158, 11, 0.45);
+}
+
+
+/* ==========================================================================
+   ROUND 2 ENHANCEMENTS: EQUAL DUAL TILES & DOSSIER STICKY FILTER ENGINE
+   ========================================================================== */
+
+/* Card 3 Equal Dual-Hero Tiles */
+.kpi-dual-tiles-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin: 0.35rem 0;
+}
+
+.kpi-hero-tile {
+  display: flex;
+  flex-direction: column;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border-color);
+  background-color: var(--bg-subtle);
+  transition: all 0.15s ease;
+}
+
+.kpi-hero-tile:hover {
+  transform: translateY(-1px);
+}
+
+.kpi-hero-tile.tile-leaves {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.03));
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.kpi-hero-tile.tile-buffer.safe {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.03));
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.kpi-hero-tile.tile-buffer.shortfall {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0.03));
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.hero-tile-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-bottom: 0.2rem;
+}
+
+.hero-tile-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.hero-tile-badge {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-full);
+}
+
+.hero-tile-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  line-height: 1.1;
+  margin-top: 0.1rem;
+}
+
+.hero-tile-number {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.tile-leaves .hero-tile-number {
+  color: var(--amber-text);
+}
+
+.tile-buffer.safe .hero-tile-number {
+  color: var(--emerald-text);
+}
+
+.tile-buffer.shortfall .hero-tile-number {
+  color: var(--rose-text);
+}
+
+.hero-tile-unit {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.hero-tile-sub {
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+/* Dark mode overrides for equal tiles */
+.dark .kpi-hero-tile.tile-leaves {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(245, 158, 11, 0.05));
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
+.dark .kpi-hero-tile.tile-buffer.safe {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(16, 185, 129, 0.05));
+  border-color: rgba(16, 185, 129, 0.5);
+}
+
+.dark .kpi-hero-tile.tile-buffer.shortfall {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.05));
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+/* Dossier Modal Sticky Header & Scope Filter Bar */
+.dossier-modal-dialog {
+  max-width: 900px !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  position: relative !important;
+  padding: 0 !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dossier-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.dossier-filter-bar {
+  position: sticky;
+  top: 56px;
+  z-index: 35;
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.6rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.dossier-filter-left {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.dossier-filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dossier-select {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-sm);
+  background-color: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.dossier-custom-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.dossier-date-input {
+  padding: 0.3rem 0.5rem;
+  font-size: 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-sm);
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+.dossier-date-sep {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.dossier-body-content {
+  padding: 1.5rem;
+}
+
+/* Neutral Tile & Subtle Badge for Clean Zero State */
+.badge-subtle {
+  background-color: var(--bg-subtle);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+.kpi-hero-tile.tile-buffer.neutral {
+  background: var(--bg-subtle);
+  border-color: var(--border-color);
+}
+
+.kpi-hero-tile.tile-buffer.neutral .hero-tile-number {
+  color: var(--text-muted);
 }

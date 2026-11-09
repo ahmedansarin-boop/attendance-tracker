@@ -1657,13 +1657,48 @@
       const start = CalendarEngine.parseDate(state.settings.startDate);
       const ref = CalendarEngine.parseDate(state.settings.refDate || CalendarEngine.formatDate(new Date()));
 
+      const logKeys = Object.keys(state.dailyLogs || {});
+      const hasLogs = logKeys.length > 0;
+
+      // Clean Slate / Initial Zero State: Trainee has 0 recorded logs
+      if (!hasLogs) {
+        return {
+          presentDays: 0,
+          halfDays: 0,
+          absentDays: 0,
+          leaveDays: 0,
+          totalLeaves: 0,
+          offDaysCount: (cal.calendarElapsedDays - cal.elapsedWorkingDays) || (cal.sundays + cal.saturdays + cal.holidays) || 28,
+          elapsedWorkingCount: 0,
+          percentage: 0.0,
+          targetPercent: state.settings.defaultTarget || 80,
+          buffer: 0,
+          makeup: 0,
+          status: 'empty',
+          isCompliant: true,
+          totalStaySeconds: 0,
+          totalHoursText: '0h 0m',
+          expectedHours: 0,
+          hourPercentage: 0.0,
+          isHourCompliant: false,
+          avgStayText: '--:--:--'
+        };
+      }
+
+      // Active state: find latest recorded date so future dates are never penalized
+      let maxLogDate = state.settings.startDate;
+      for (const d of logKeys) {
+        if (d > maxLogDate && d <= (state.settings.refDate || '9999-99-99')) {
+          maxLogDate = d;
+        }
+      }
+
       let cur = new Date(start.getTime());
       let presentDays = 0;
       let halfDays = 0;
       let absentDays = 0;
       let leaveDays = 0;
       let totalStaySeconds = 0;
-      let elapsedWorkingCount = 0;
       let offDaysCount = 0;
 
       const reqHoursPerDay = parseFloat(state.settings.requiredHours) || 8;
@@ -1673,7 +1708,6 @@
         const dayStat = CalendarEngine.getDayStatus(dateStr);
 
         if (dayStat.isWorking) {
-          elapsedWorkingCount++;
           const log = state.dailyLogs[dateStr];
 
           if (log) {
@@ -1682,16 +1716,16 @@
               totalStaySeconds += stay.totalSeconds;
             }
 
-            // Any day marked present (even if stay is 1 hour) counts as 1 FULL DAY PRESENT in Day metrics
             if (log.status === 'present' || log.status === 'half_day') {
               presentDays += 1;
+              if (log.status === 'half_day') halfDays += 1;
             } else if (log.status === 'leave') {
               leaveDays += 1;
             } else if (log.status === 'absent') {
               absentDays += 1;
             }
-          } else {
-            // Unrecorded working day: trainee was not logged
+          } else if (dateStr <= maxLogDate) {
+            // Past working day during active session without punch is an unrecorded absence
             absentDays += 1;
           }
         } else {
@@ -1700,26 +1734,28 @@
         cur.setDate(cur.getDate() + 1);
       }
 
-      const totalLeaves = elapsedWorkingCount - presentDays;
+      // Unified leaves/absent count across whole project
+      const totalLeaves = leaveDays + absentDays;
+      const elapsedWorkingCount = presentDays + totalLeaves;
       const targetPercent = state.settings.defaultTarget || 80;
       const targetRatio = targetPercent / 100;
-      const percentage = elapsedWorkingCount === 0 ? 100.0 : ((presentDays / elapsedWorkingCount) * 100);
+      const percentage = elapsedWorkingCount === 0 ? 0.0 : ((presentDays / elapsedWorkingCount) * 100);
 
       // Hour-Wise Stay Metrics
       const expectedHours = elapsedWorkingCount * reqHoursPerDay;
       const expectedStaySeconds = expectedHours * 3600;
-      const hourPercentage = expectedStaySeconds === 0 ? 100.0 : ((totalStaySeconds / expectedStaySeconds) * 100);
+      const hourPercentage = expectedStaySeconds === 0 ? 0.0 : ((totalStaySeconds / expectedStaySeconds) * 100);
 
       // Safe Leave Buffer (Days)
       let buffer = 0;
-      if (targetRatio > 0) {
+      if (targetRatio > 0 && elapsedWorkingCount > 0) {
         buffer = Math.floor((presentDays / targetRatio) - elapsedWorkingCount);
         if (buffer < 0) buffer = 0;
       }
 
       // Shortfall Recovery days
       let makeup = 0;
-      if (percentage < targetPercent) {
+      if (percentage < targetPercent && elapsedWorkingCount > 0) {
         makeup = Math.ceil(((targetRatio * elapsedWorkingCount) - presentDays) / (1 - targetRatio));
         if (makeup < 0) makeup = 0;
       }
@@ -1739,6 +1775,10 @@
         avgStayText = `${String(ah).padStart(2, '0')}:${String(am).padStart(2, '0')}:${String(as).padStart(2, '0')}`;
       }
 
+      let status = 'safe';
+      if (percentage < (targetPercent - 5)) status = 'critical';
+      else if (percentage < targetPercent) status = 'warning';
+
       return {
         presentDays: Number(presentDays.toFixed(1)),
         halfDays,
@@ -1751,7 +1791,7 @@
         targetPercent,
         buffer,
         makeup,
-        status: percentage < (targetPercent - 5) ? 'critical' : (percentage < targetPercent ? 'warning' : 'safe'),
+        status,
         isCompliant: percentage >= targetPercent,
         totalStaySeconds,
         totalHoursText,
@@ -1769,6 +1809,10 @@
       let workingDays = 0;
       let monthStaySeconds = 0;
 
+      const refDate = state.settings.refDate || '2026-11-03';
+      const currentMonthKey = refDate.slice(0, 7);
+      const isFutureMonth = monthKey > currentMonthKey;
+
       const [y, m] = monthKey.split('-').map(Number);
       const daysInMonth = new Date(y, m, 0).getDate();
 
@@ -1779,6 +1823,11 @@
         const dayStat = CalendarEngine.getDayStatus(dateStr);
         if (dayStat.isWorking) {
           workingDays++;
+          if (isFutureMonth || dateStr > refDate) {
+            // Future working day: not elapsed yet, cannot be marked absent
+            continue;
+          }
+
           const log = state.dailyLogs[dateStr];
           if (log) {
             if (log.status === 'present' || log.status === 'half_day') daysPresent += 1;
@@ -1797,16 +1846,21 @@
 
       const totalH = Math.floor(monthStaySeconds / 3600);
       const totalM = Math.floor((monthStaySeconds % 3600) / 60);
-      const stayText = `${totalH}h ${totalM}m`;
+      const stayText = isFutureMonth ? '--' : `${totalH}h ${totalM}m`;
 
-      const percentage = workingDays === 0 ? 100.0 : ((daysPresent / workingDays) * 100);
+      const elapsedInMonth = daysPresent + daysLeaves + daysAbsent;
+      const percentage = elapsedInMonth === 0 ? null : ((daysPresent / elapsedInMonth) * 100);
+
       return {
         workingDays,
-        daysPresent: Number(daysPresent.toFixed(1)),
-        daysAbsent,
-        daysLeaves,
+        daysPresent: isFutureMonth ? '--' : Number(daysPresent.toFixed(1)),
+        daysAbsent: isFutureMonth ? '--' : daysAbsent,
+        daysLeaves: isFutureMonth ? '--' : daysLeaves,
+        totalMissed: isFutureMonth ? '--' : (daysLeaves + daysAbsent),
         stayText,
-        percentage: Number(percentage.toFixed(1))
+        stayMinutes: Math.round(monthStaySeconds / 60),
+        percentage: percentage !== null ? Number(percentage.toFixed(1)) : null,
+        isFuture: isFutureMonth
       };
     }
   };
@@ -2006,7 +2060,11 @@
         }
       });
       document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeProfileMenu();
+        if (e.key === 'Escape') {
+          closeProfileMenu();
+          this.closePrintModal();
+          AuthManager.closeAuthModal();
+        }
       });
 
       document.getElementById('btnMenuCloudSync')?.addEventListener('click', () => {
@@ -2048,6 +2106,33 @@
       document.getElementById('btnExportFullJSON')?.addEventListener('click', () => this.exportJSON());
       document.getElementById('inputImportJSONFile')?.addEventListener('change', (e) => this.handleFileImport(e));
       document.getElementById('btnClosePrintModal')?.addEventListener('click', () => this.closePrintModal());
+      document.getElementById('btnBottomClosePrintModal')?.addEventListener('click', () => this.closePrintModal());
+
+      // Dossier Date Scope Filter Listeners
+      document.getElementById('dossierScopeSelect')?.addEventListener('change', (e) => {
+        const val = e.target.value;
+        const monthSel = document.getElementById('dossierMonthSelect');
+        const customWrap = document.getElementById('dossierCustomRangeWrap');
+
+        if (monthSel) monthSel.classList.toggle('hidden', val !== 'month');
+        if (customWrap) customWrap.classList.toggle('hidden', val !== 'custom');
+
+        if (val !== 'custom') {
+          this.renderDossier(val);
+        }
+      });
+
+      document.getElementById('dossierMonthSelect')?.addEventListener('change', () => {
+        this.renderDossier('month');
+      });
+
+      document.getElementById('btnApplyDossierCustomDate')?.addEventListener('click', () => {
+        this.renderDossier('custom');
+      });
+
+      document.getElementById('printModal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'printModal') this.closePrintModal();
+      });
       document.getElementById('btnCloudSyncStatus')?.addEventListener('click', () => AuthManager.openAuthModal());
       document.getElementById('btnOpenCloudModalFromSettings')?.addEventListener('click', () => AuthManager.openAuthModal());
       document.getElementById('btnCloseAuthModal')?.addEventListener('click', () => AuthManager.closeAuthModal());
@@ -2402,12 +2487,15 @@
       const bar = document.getElementById('kpiAggregateProgressBar');
       if (bar) {
         bar.style.width = `${Math.min(100, stats.percentage)}%`;
-        bar.className = `progress-fill ${stats.status}`;
+        bar.className = `progress-fill ${stats.status === 'empty' ? 'neutral' : stats.status}`;
       }
 
       const badge = document.getElementById('kpiStatusBadge');
       if (badge) {
-        if (stats.status === 'safe') {
+        if (stats.status === 'empty') {
+          badge.className = 'badge-pill badge-subtle';
+          badge.innerHTML = '<span class="status-beacon" style="background-color: var(--text-muted);"></span><span id="kpiStatusText">AWAITING DATA</span>';
+        } else if (stats.status === 'safe') {
           badge.className = 'badge-pill badge-emerald';
           badge.innerHTML = '<span class="status-beacon beacon-safe"></span><span id="kpiStatusText">COMPLIANT</span>';
         } else if (stats.status === 'warning') {
@@ -2428,11 +2516,14 @@
       const kpiHourBar = document.getElementById('kpiHourProgressBar');
       if (kpiHourBar) {
         kpiHourBar.style.width = `${Math.min(100, stats.hourPercentage)}%`;
-        kpiHourBar.className = `progress-fill ${stats.hourPercentage >= stats.targetPercent ? 'safe' : 'critical'}`;
+        kpiHourBar.className = `progress-fill ${stats.status === 'empty' ? 'neutral' : (stats.hourPercentage >= stats.targetPercent ? 'safe' : 'critical')}`;
       }
       const kpiStayBadge = document.getElementById('kpiStayBadge');
       if (kpiStayBadge) {
-        if (stats.hourPercentage >= 100) {
+        if (stats.status === 'empty') {
+          kpiStayBadge.className = 'badge-pill badge-subtle';
+          kpiStayBadge.textContent = 'NO LOGS';
+        } else if (stats.hourPercentage >= 100) {
           kpiStayBadge.className = 'badge-pill badge-emerald';
           kpiStayBadge.textContent = 'FULL STAY';
         } else if (stats.hourPercentage >= stats.targetPercent) {
@@ -2445,13 +2536,14 @@
       }
       document.getElementById('kpiAvgDailyStay').textContent = stats.avgStayText;
 
-      // Card 3: Days & Leaves (Buffer, Highlighted Leaves, Quota)
-      const kpiTotalLeavesDays = document.getElementById('kpiTotalLeavesDays');
-      if (kpiTotalLeavesDays) kpiTotalLeavesDays.textContent = `${stats.totalLeaves}d`;
-      const kpiLeavesCount = document.getElementById('kpiLeavesCount');
-      if (kpiLeavesCount) kpiLeavesCount.textContent = `${stats.totalLeaves}d`;
+      // Card 3: Dual Hero Tiles (Leaves & Buffer)
       const kpiLeavesHeroCount = document.getElementById('kpiLeavesHeroCount');
-      if (kpiLeavesHeroCount) kpiLeavesHeroCount.textContent = String(stats.totalLeaves).padStart(2, '0');
+      const actualMissed = stats.totalLeaves;
+      if (kpiLeavesHeroCount) kpiLeavesHeroCount.textContent = String(actualMissed).padStart(2, '0');
+      const kpiLeavesCount = document.getElementById('kpiLeavesCount');
+      if (kpiLeavesCount) kpiLeavesCount.textContent = `${actualMissed}d`;
+      const kpiTotalLeavesDays = document.getElementById('kpiTotalLeavesDays');
+      if (kpiTotalLeavesDays) kpiTotalLeavesDays.textContent = `${actualMissed}d`;
       const kpiOffDaysCount = document.getElementById('kpiOffDaysCount');
       if (kpiOffDaysCount) kpiOffDaysCount.textContent = `${stats.offDaysCount}d`;
       const kpiAbsentCount = document.getElementById('kpiAbsentCount');
@@ -2459,44 +2551,68 @@
       const kpiHalfDayCount = document.getElementById('kpiHalfDayCount');
       if (kpiHalfDayCount) kpiHalfDayCount.textContent = stats.halfDays;
 
+      const kpiBufferTile = document.getElementById('kpiBufferTile');
+      const kpiBufferTileLabel = document.getElementById('kpiBufferTileLabel');
+      const kpiBufferTileBadge = document.getElementById('kpiBufferTileBadge');
+      const kpiBufferTileSub = document.getElementById('kpiBufferTileSub');
       const kpiBufCount = document.getElementById('kpiBufferCount');
-      const kpiBufUnit = document.getElementById('kpiBufferUnit');
       const kpiBufIcon = document.getElementById('kpiBufferIcon');
       const kpiBufferBadgeText = document.getElementById('kpiBufferBadgeText');
       const kpiLeaveProgressBar = document.getElementById('kpiLeaveProgressBar');
       const kpiLeaveBufferAdvice = document.getElementById('kpiLeaveBufferAdvice');
 
-      if (stats.status === 'safe') {
-        if (kpiBufCount) {
-          kpiBufCount.textContent = `+${stats.buffer}`;
-          kpiBufCount.style.color = 'var(--emerald)';
+      if (stats.status === 'empty') {
+        // Clean Slate / Initial Zero State
+        if (kpiBufferTile) kpiBufferTile.className = 'kpi-hero-tile tile-buffer neutral';
+        if (kpiBufferTileLabel) kpiBufferTileLabel.textContent = 'Safe Buffer';
+        if (kpiBufferTileBadge) {
+          kpiBufferTileBadge.className = 'hero-tile-badge badge-subtle';
+          kpiBufferTileBadge.textContent = 'Awaiting Data';
         }
-        if (kpiBufUnit) kpiBufUnit.textContent = 'Days Safe Buffer';
-        if (kpiBufIcon) {
-          kpiBufIcon.className = 'badge-pill badge-emerald';
-        }
-        if (kpiBufferBadgeText) kpiBufferBadgeText.textContent = 'Safe Margin';
+        if (kpiBufCount) kpiBufCount.textContent = '0';
+        if (kpiBufferTileSub) kpiBufferTileSub.textContent = 'No Missed Days';
+        if (kpiBufIcon) kpiBufIcon.className = 'badge-pill badge-subtle';
+        if (kpiBufferBadgeText) kpiBufferBadgeText.textContent = 'Ready';
         if (kpiLeaveBufferAdvice) {
-          kpiLeaveBufferAdvice.innerHTML = `Leaves / Absent: <strong id="kpiLeavesCount" style="color: var(--amber); font-weight: 800;">${stats.totalLeaves}d</strong> &bull; Buffer: <strong style="color: var(--emerald);">+${stats.buffer}d</strong>`;
+          kpiLeaveBufferAdvice.innerHTML = `Leaves / Absent: <strong id="kpiLeavesCount" style="color: var(--text-muted); font-weight: 700;">0d</strong> &bull; Buffer: <strong style="color: var(--text-muted);">0d</strong>`;
         }
         if (kpiLeaveProgressBar) {
-          const quota = stats.totalLeaves + stats.buffer;
-          const quotaPct = quota > 0 ? Math.min(100, Math.max(12, (stats.totalLeaves / quota) * 100)) : 0;
+          kpiLeaveProgressBar.style.width = '0%';
+          kpiLeaveProgressBar.className = 'progress-fill';
+        }
+      } else if (stats.status === 'safe') {
+        if (kpiBufferTile) kpiBufferTile.className = 'kpi-hero-tile tile-buffer safe';
+        if (kpiBufferTileLabel) kpiBufferTileLabel.textContent = 'Safe Buffer';
+        if (kpiBufferTileBadge) {
+          kpiBufferTileBadge.className = 'hero-tile-badge badge-emerald';
+          kpiBufferTileBadge.textContent = 'Safe';
+        }
+        if (kpiBufCount) kpiBufCount.textContent = `+${stats.buffer}`;
+        if (kpiBufferTileSub) kpiBufferTileSub.textContent = `Margin > ${stats.targetPercent}%`;
+        if (kpiBufIcon) kpiBufIcon.className = 'badge-pill badge-emerald';
+        if (kpiBufferBadgeText) kpiBufferBadgeText.textContent = 'Safe Margin';
+        if (kpiLeaveBufferAdvice) {
+          kpiLeaveBufferAdvice.innerHTML = `Leaves / Absent: <strong id="kpiLeavesCount" style="color: var(--amber); font-weight: 800;">${actualMissed}d</strong> &bull; Buffer: <strong style="color: var(--emerald);">+${stats.buffer}d</strong>`;
+        }
+        if (kpiLeaveProgressBar) {
+          const quota = actualMissed + stats.buffer;
+          const quotaPct = quota > 0 ? Math.min(100, Math.max(12, (actualMissed / quota) * 100)) : 0;
           kpiLeaveProgressBar.style.width = `${quotaPct}%`;
           kpiLeaveProgressBar.className = 'progress-fill warning';
         }
       } else {
-        if (kpiBufCount) {
-          kpiBufCount.textContent = `-${stats.makeup}`;
-          kpiBufCount.style.color = 'var(--rose)';
+        if (kpiBufferTile) kpiBufferTile.className = 'kpi-hero-tile tile-buffer shortfall';
+        if (kpiBufferTileLabel) kpiBufferTileLabel.textContent = 'Days Required';
+        if (kpiBufferTileBadge) {
+          kpiBufferTileBadge.className = 'hero-tile-badge badge-rose';
+          kpiBufferTileBadge.textContent = 'Deficit';
         }
-        if (kpiBufUnit) kpiBufUnit.textContent = 'Days Required';
-        if (kpiBufIcon) {
-          kpiBufIcon.className = 'badge-pill badge-rose';
-        }
+        if (kpiBufCount) kpiBufCount.textContent = `-${stats.makeup}`;
+        if (kpiBufferTileSub) kpiBufferTileSub.textContent = `Target: ${stats.targetPercent}%`;
+        if (kpiBufIcon) kpiBufIcon.className = 'badge-pill badge-rose';
         if (kpiBufferBadgeText) kpiBufferBadgeText.textContent = 'Action Needed';
         if (kpiLeaveBufferAdvice) {
-          kpiLeaveBufferAdvice.innerHTML = `Leaves / Absent: <strong id="kpiLeavesCount" style="color: var(--rose); font-weight: 800;">${stats.totalLeaves}d</strong> &bull; Shortfall: <strong style="color: var(--rose);">-${stats.makeup}d</strong>`;
+          kpiLeaveBufferAdvice.innerHTML = `Leaves / Absent: <strong id="kpiLeavesCount" style="color: var(--rose); font-weight: 800;">${actualMissed}d</strong> &bull; Shortfall: <strong style="color: var(--rose);">-${stats.makeup}d</strong>`;
         }
         if (kpiLeaveProgressBar) {
           kpiLeaveProgressBar.style.width = '100%';
@@ -3331,10 +3447,39 @@
       document.getElementById('simMaxSemesterMissCount').textContent = `${maxAllowableLeaves} Days`;
     },
 
-    // --- Official Dossier & Printable Report ---
+    // --- Official Dossier & Printable Report Engine with Scope Filtering ---
     openPrintModal() {
-      const stats = BiometricEngine.computeOverallMetrics();
+      // Initialize month options once
+      const monthSel = document.getElementById('dossierMonthSelect');
+      if (monthSel && monthSel.options.length === 0) {
+        const cal = CalendarEngine.computeWorkingDays();
+        cal.monthlyBreakdown.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.key;
+          opt.textContent = m.name;
+          monthSel.appendChild(opt);
+        });
+        const refDate = state.settings.refDate || '2026-11-03';
+        const currentMonthKey = refDate.slice(0, 7);
+        if ([...monthSel.options].some(o => o.value === currentMonthKey)) {
+          monthSel.value = currentMonthKey;
+        }
+      }
+
+      const scopeSel = document.getElementById('dossierScopeSelect');
+      const scope = scopeSel ? scopeSel.value : 'toDate';
+      this.renderDossier(scope);
+
+      document.getElementById('printModal')?.classList.remove('hidden');
+    },
+
+    closePrintModal() {
+      document.getElementById('printModal')?.classList.add('hidden');
+    },
+
+    renderDossier(scope = 'toDate') {
       const cal = CalendarEngine.computeWorkingDays();
+      const refDate = state.settings.refDate || '2026-11-03';
 
       document.getElementById('printReportTraineeName').textContent = state.settings.traineeName || 'Nadeem Ansari';
       document.getElementById('printReportRollNumber').textContent = state.settings.rollNumber || 'CITS26-MUM-1048';
@@ -3345,46 +3490,127 @@
         year: 'numeric'
       });
 
-      document.getElementById('printReportDaysElapsed').textContent = stats.elapsedWorkingCount;
-      document.getElementById('printReportDaysPresent').textContent = stats.presentDays;
-      document.getElementById('printReportDaysLeaves').textContent = stats.leaveDays;
-      document.getElementById('printReportAggregatePct').textContent = `${stats.percentage.toFixed(1)}%`;
+      const badgeEl = document.getElementById('dossierActiveScopeBadge');
+      let filteredMonths = [];
+      let scopeLabel = '';
 
+      if (scope === 'all') {
+        filteredMonths = [...cal.monthlyBreakdown];
+        scopeLabel = 'Full Academic Session (17 Aug 2026 — 31 May 2027)';
+      } else if (scope === 'month') {
+        const monthSel = document.getElementById('dossierMonthSelect');
+        const selectedMonthKey = monthSel ? monthSel.value : refDate.slice(0, 7);
+        filteredMonths = cal.monthlyBreakdown.filter(m => m.key === selectedMonthKey);
+        const mName = filteredMonths[0]?.name || selectedMonthKey;
+        scopeLabel = `Monthly Attendance Record — ${mName}`;
+      } else if (scope === 'custom') {
+        const fromVal = document.getElementById('dossierFromDate')?.value || '2026-08-17';
+        const toVal = document.getElementById('dossierToDate')?.value || refDate;
+        const fromMonth = fromVal.slice(0, 7);
+        const toMonth = toVal.slice(0, 7);
+        filteredMonths = cal.monthlyBreakdown.filter(m => m.key >= fromMonth && m.key <= toMonth);
+        scopeLabel = `Custom Date Span: ${CalendarEngine.formatDisplayDate(fromVal)} to ${CalendarEngine.formatDisplayDate(toVal)}`;
+      } else {
+        // 'toDate' default
+        const currentMonthKey = refDate.slice(0, 7);
+        filteredMonths = cal.monthlyBreakdown.filter(m => m.key <= currentMonthKey);
+        scopeLabel = `Session to Date: 17 Aug 2026 to ${CalendarEngine.formatDisplayDate(refDate)}`;
+      }
+
+      if (badgeEl) {
+        badgeEl.textContent = scopeLabel.toUpperCase();
+      }
+
+      // Populate monthly breakdown rows
       const tbody = document.getElementById('printReportMonthRows');
-      tbody.innerHTML = '';
+      if (tbody) tbody.innerHTML = '';
 
-      cal.monthlyBreakdown.forEach(m => {
+      let totalWorkingDays = 0;
+      let totalPresent = 0;
+      let totalAbsent = 0;
+      let totalLeaves = 0;
+      let totalStayMinutes = 0;
+
+      filteredMonths.forEach(m => {
         const mStats = BiometricEngine.computeMonthMetrics(m.key);
+        
         const tr = document.createElement('tr');
-        const statusLabel = mStats.percentage >= 80 ? 'COMPLIANT' : 'SHORTFALL';
+        if (mStats.isFuture) {
+          tr.innerHTML = `
+            <td style="padding: 0.5rem; font-weight: 600;">${m.name}</td>
+            <td style="padding: 0.5rem; text-align: right;" class="font-mono-num">${mStats.workingDays}</td>
+            <td style="padding: 0.5rem; text-align: right; color: #94a3b8;" class="font-mono-num">--</td>
+            <td style="padding: 0.5rem; text-align: right; color: #94a3b8;" class="font-mono-num">--</td>
+            <td style="padding: 0.5rem; text-align: right; color: #94a3b8;" class="font-mono-num">--</td>
+            <td style="padding: 0.5rem; text-align: right; color: #94a3b8;" class="font-mono-num">--</td>
+            <td style="padding: 0.5rem; text-align: right; color: #94a3b8;" class="font-mono-num">--</td>
+            <td style="padding: 0.5rem; text-align: center;">
+              <span class="badge-pill badge-subtle" style="font-size: 0.68rem; padding: 0.15rem 0.5rem; background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1;">Upcoming</span>
+            </td>
+          `;
+        } else {
+          totalWorkingDays += mStats.workingDays;
+          totalPresent += (typeof mStats.daysPresent === 'number' ? mStats.daysPresent : 0);
+          totalAbsent += (typeof mStats.daysAbsent === 'number' ? mStats.daysAbsent : 0);
+          totalLeaves += (typeof mStats.daysLeaves === 'number' ? mStats.daysLeaves : 0);
+          totalStayMinutes += mStats.stayMinutes || 0;
 
-        tr.innerHTML = `
-          <td style="padding: 0.5rem; font-weight: 600;">${m.name}</td>
-          <td style="padding: 0.5rem; text-align: right;" class="font-mono-num">${mStats.workingDays}</td>
-          <td style="padding: 0.5rem; text-align: right;" class="font-mono-num">${mStats.daysPresent}</td>
-          <td style="padding: 0.5rem; text-align: right;" class="font-mono-num">${mStats.daysAbsent}</td>
-          <td style="padding: 0.5rem; text-align: right;" class="font-mono-num">${mStats.daysLeaves}</td>
-          <td style="padding: 0.5rem; text-align: right;" class="font-mono-num">${mStats.stayText}</td>
-          <td style="padding: 0.5rem; text-align: right; font-weight: 800;" class="font-mono-num">${mStats.percentage.toFixed(1)}%</td>
-          <td style="padding: 0.5rem; text-align: center; font-weight: 700; color: ${mStats.percentage >= 80 ? '#059669' : '#dc2626'};">${statusLabel}</td>
-        `;
-        tbody.appendChild(tr);
+          const statusLabel = (mStats.percentage !== null && mStats.percentage >= 80) ? 'COMPLIANT' : 'SHORTFALL';
+          const pctText = mStats.percentage !== null ? `${mStats.percentage.toFixed(1)}%` : '--';
+          const pctColor = (mStats.percentage !== null && mStats.percentage >= 80) ? '#059669' : '#dc2626';
+
+          tr.innerHTML = `
+            <td style="padding: 0.5rem; font-weight: 600;">${m.name}</td>
+            <td style="padding: 0.5rem; text-align: right;" class="font-mono-num">${mStats.workingDays}</td>
+            <td style="padding: 0.5rem; text-align: right;" class="font-mono-num">${mStats.daysPresent}</td>
+            <td style="padding: 0.5rem; text-align: right;" class="font-mono-num">${mStats.daysAbsent}</td>
+            <td style="padding: 0.5rem; text-align: right;" class="font-mono-num">${mStats.daysLeaves}</td>
+            <td style="padding: 0.5rem; text-align: right;" class="font-mono-num">${mStats.stayText}</td>
+            <td style="padding: 0.5rem; text-align: right; font-weight: 800; color: ${pctColor};" class="font-mono-num">${pctText}</td>
+            <td style="padding: 0.5rem; text-align: center; font-weight: 700; color: ${pctColor};">${statusLabel}</td>
+          `;
+        }
+        tbody?.appendChild(tr);
       });
 
-      document.getElementById('printReportTotalWorkingDays').textContent = stats.elapsedWorkingCount;
-      document.getElementById('printReportTotalPresent').textContent = stats.presentDays;
-      document.getElementById('printReportTotalAbsent').textContent = stats.absentDays;
-      document.getElementById('printReportTotalLeaves').textContent = stats.leaveDays;
-      document.getElementById('printReportTotalStayHours').textContent = stats.totalHoursText;
-      document.getElementById('printReportAggregatePctFooter').textContent = `${stats.percentage.toFixed(1)}%`;
-      document.getElementById('printReportAggregateStatus').textContent = stats.isCompliant ? 'COMPLIANT' : 'SHORTFALL';
-      document.getElementById('printReportAggregateStatus').style.color = stats.isCompliant ? '#059669' : '#dc2626';
+      const aggPct = totalWorkingDays > 0 ? (totalPresent / totalWorkingDays) * 100 : 0;
+      const isCompliant = aggPct >= (state.settings.defaultTarget || 80);
 
-      document.getElementById('printModal').classList.remove('hidden');
-    },
+      const hours = Math.floor(totalStayMinutes / 60);
+      const mins = totalStayMinutes % 60;
+      const stayText = `${hours}h ${String(mins).padStart(2, '0')}m`;
 
-    closePrintModal() {
-      document.getElementById('printModal').classList.add('hidden');
+      // Top 4 summary tiles in Dossier
+      const elDays = document.getElementById('printReportDaysElapsed');
+      if (elDays) elDays.textContent = totalWorkingDays;
+      const elPres = document.getElementById('printReportDaysPresent');
+      if (elPres) elPres.textContent = totalPresent;
+      const elLeav = document.getElementById('printReportDaysLeaves');
+      if (elLeav) elLeav.textContent = totalLeaves;
+      const elPct = document.getElementById('printReportAggregatePct');
+      if (elPct) {
+        elPct.textContent = `${aggPct.toFixed(1)}%`;
+        elPct.style.color = isCompliant ? '#059669' : '#dc2626';
+      }
+
+      // Grand Total Footer in Dossier
+      const elTotW = document.getElementById('printReportTotalWorkingDays');
+      if (elTotW) elTotW.textContent = totalWorkingDays;
+      const elTotP = document.getElementById('printReportTotalPresent');
+      if (elTotP) elTotP.textContent = totalPresent;
+      const elTotA = document.getElementById('printReportTotalAbsent');
+      if (elTotA) elTotA.textContent = totalAbsent;
+      const elTotL = document.getElementById('printReportTotalLeaves');
+      if (elTotL) elTotL.textContent = totalLeaves;
+      const elTotH = document.getElementById('printReportTotalStayHours');
+      if (elTotH) elTotH.textContent = stayText;
+      const elTotPct = document.getElementById('printReportAggregatePctFooter');
+      if (elTotPct) elTotPct.textContent = `${aggPct.toFixed(1)}%`;
+      const elTotStat = document.getElementById('printReportAggregateStatus');
+      if (elTotStat) {
+        elTotStat.textContent = isCompliant ? 'COMPLIANT' : 'SHORTFALL';
+        elTotStat.style.color = isCompliant ? '#059669' : '#dc2626';
+      }
     },
 
     exportJSON() {
