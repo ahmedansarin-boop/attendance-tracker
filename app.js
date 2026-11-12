@@ -911,27 +911,6 @@
     parseFlexibleDate(raw) {
       if (!raw) return null;
 
-      // Complete mapping for Excel serial numbers where Excel with US locale (M/D/Y)
-      // swapped Day and Month for Indian DD/MM/YYYY dates entered for days 1 to 12
-      const EXCEL_SERIAL_SWAP_MAP = {
-        // September (Days 1 to 12 of Sep 2026)
-        46031: '2026-09-01', 46062: '2026-09-02', 46090: '2026-09-03', 46121: '2026-09-04',
-        46151: '2026-09-05', 46182: '2026-09-06', 46212: '2026-09-07', 46243: '2026-09-08',
-        46274: '2026-09-09', 46304: '2026-09-10', 46335: '2026-09-11', 46365: '2026-09-12',
-        // October (Days 1 to 12 of Oct 2026)
-        46032: '2026-10-01', 46063: '2026-10-02', 46091: '2026-10-03', 46122: '2026-10-04',
-        46152: '2026-10-05', 46183: '2026-10-06', 46213: '2026-10-07', 46244: '2026-10-08',
-        46275: '2026-10-09', 46305: '2026-10-10', 46336: '2026-10-11', 46366: '2026-10-12',
-        // November (Days 1 to 12 of Nov 2026)
-        46033: '2026-11-01', 46064: '2026-11-02', 46092: '2026-11-03', 46123: '2026-11-04',
-        46153: '2026-11-05', 46184: '2026-11-06', 46214: '2026-11-07', 46245: '2026-11-08',
-        46276: '2026-11-09', 46306: '2026-11-10', 46337: '2026-11-11', 46367: '2026-11-12',
-        // December (Days 1 to 12 of Dec 2026)
-        46034: '2026-12-01', 46065: '2026-12-02', 46093: '2026-12-03', 46124: '2026-12-04',
-        46154: '2026-12-05', 46185: '2026-12-06', 46215: '2026-12-07', 46246: '2026-12-08',
-        46277: '2026-12-09', 46307: '2026-12-10', 46338: '2026-12-11', 46368: '2026-12-12'
-      };
-
       // 1. Check JS Date objects (can come from SheetJS)
       if (raw instanceof Date) {
         if (isNaN(raw.getTime())) return null;
@@ -947,14 +926,14 @@
       // 2. Check numeric Excel serials
       if (typeof raw === 'number' || (!isNaN(raw) && !String(raw).includes('-') && !String(raw).includes('/') && !String(raw).includes(':'))) {
         const num = Math.floor(parseFloat(raw));
-        if (EXCEL_SERIAL_SWAP_MAP[num]) {
-          return EXCEL_SERIAL_SWAP_MAP[num];
-        }
         if (num > 30000 && num < 60000) {
           const date = new Date(Math.round((num - 25569) * 86400 * 1000));
           let y = date.getUTCFullYear();
           let m = date.getUTCMonth() + 1;
           let d = date.getUTCDate();
+          // Only swap if month is pre-session (m <= 7 in 2026, which is impossible in the Aug 2026 session)
+          // and day is an in-session month (8 to 12).
+          // NEVER swap when both month and day are in-session (e.g. 46275=10 Sep, 46304=9 Oct).
           if (y === 2026 && m <= 7 && d >= 8 && d <= 12) {
             const t = m; m = d; d = t;
           }
@@ -998,15 +977,11 @@
         let part2 = parseInt(mIso[2], 10);
         let part3 = parseInt(mIso[3], 10);
 
+        // Only swap if part2 > 12 (which is an impossible month like YYYY-DD-MM)
         if (part2 > 12 && part3 >= 1 && part3 <= 12) {
           return `${String(y).padStart(4, '0')}-${String(part3).padStart(2, '0')}-${String(part2).padStart(2, '0')}`;
         }
-        if (y === 2026 && (part3 >= 8 && part3 <= 12) && part2 >= 1 && part2 <= 31 && part2 !== part3) {
-          return `${String(y).padStart(4, '0')}-${String(part3).padStart(2, '0')}-${String(part2).padStart(2, '0')}`;
-        }
-        if (y === 2027 && (part3 >= 1 && part3 <= 5) && part2 >= 1 && part2 <= 31 && part2 > 5) {
-          return `${String(y).padStart(4, '0')}-${String(part3).padStart(2, '0')}-${String(part2).padStart(2, '0')}`;
-        }
+        // Standard ISO: YYYY-MM-DD
         return `${String(y).padStart(4, '0')}-${String(part2).padStart(2, '0')}-${String(part3).padStart(2, '0')}`;
       }
 
@@ -1102,29 +1077,46 @@
             const workbook = window.XLSX.read(data, { type: 'array' });
             
             // SMART MULTI-SHEET SCAN:
-            // Combine rows from all sheets that contain attendance data
-            // (e.g. 'Attendance Calculator' with leaves + 'Sheet1' with raw punches)
-            const allRows = [];
-            let primarySheetFound = false;
-
-            const sheetNames = [...workbook.SheetNames].sort((a, b) => {
-              const aScore = /attendance|calculator|register/i.test(a) ? 2 : 1;
-              const bScore = /attendance|calculator|register/i.test(b) ? 2 : 1;
-              return bScore - aScore;
+            // SMART MULTI-SHEET SCAN:
+            // Check if there is an authoritative master register sheet
+            // (e.g. 'Attendance Calculator' with >= 30 rows and approved leaves)
+            let masterSheetRows = null;
+            const masterSheetName = workbook.SheetNames.find(name => {
+              if (!/attendance.*calculator|calculator|register/i.test(name)) return false;
+              const ws = workbook.Sheets[name];
+              if (!ws) return false;
+              const r = window.XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
+              return r && r.length >= 30 && r.some(row => Array.isArray(row) && row.some(c => String(c).toLowerCase().includes('leave')));
             });
 
-            sheetNames.forEach(sheetName => {
-              const worksheet = workbook.Sheets[sheetName];
-              if (!worksheet) return;
-              const rows = window.XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
-              if (rows && rows.length > 0) {
-                const hasDates = rows.some(r => Array.isArray(r) && r.some(c => this.parseFlexibleDate(c)));
-                if (hasDates) {
-                  allRows.push(...rows);
-                  primarySheetFound = true;
+            if (masterSheetName) {
+              const ws = workbook.Sheets[masterSheetName];
+              masterSheetRows = window.XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
+            }
+
+            const allRows = masterSheetRows ? [...masterSheetRows] : [];
+            let primarySheetFound = Boolean(masterSheetRows);
+
+            if (!masterSheetRows) {
+              const sheetNames = [...workbook.SheetNames].sort((a, b) => {
+                const aScore = /attendance|calculator|register/i.test(a) ? 2 : 1;
+                const bScore = /attendance|calculator|register/i.test(b) ? 2 : 1;
+                return bScore - aScore;
+              });
+
+              sheetNames.forEach(sheetName => {
+                const worksheet = workbook.Sheets[sheetName];
+                if (!worksheet) return;
+                const rows = window.XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
+                if (rows && rows.length > 0) {
+                  const hasDates = rows.some(r => Array.isArray(r) && r.some(c => this.parseFlexibleDate(c)));
+                  if (hasDates) {
+                    allRows.push(...rows);
+                    primarySheetFound = true;
+                  }
                 }
-              }
-            });
+              });
+            }
 
             if (!primarySheetFound && workbook.SheetNames.length > 0) {
               const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -1289,15 +1281,15 @@
         // If date already seen (from earlier sheet/row):
         if (recordsMap.has(dateVal)) {
           const existing = recordsMap.get(dateVal);
-          // If new row has punches, prefer punches:
-          if ((inTimeVal || staySeconds > 0) && (!existing.inTime || existing.status !== 'present')) {
+          // If new row has punches, prefer punches unless existing row is an approved leave:
+          if ((inTimeVal || staySeconds > 0) && existing.status !== 'leave' && (!existing.inTime || existing.status !== 'present')) {
             existing.inTime = inTimeVal || existing.inTime;
             existing.outTime = outTimeVal || existing.outTime;
             existing.stayText = stayDisplay !== '00:00:00' ? stayDisplay : existing.stayText;
             existing.status = 'present';
             existing.locationIn = locIn;
             existing.locationOut = locOut;
-          } else if (statusVal === 'leave' && existing.status !== 'present') {
+          } else if (statusVal === 'leave') {
             existing.status = 'leave';
           }
           return;
